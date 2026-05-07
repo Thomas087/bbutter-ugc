@@ -1,0 +1,8 @@
+{
+  "reviews": [
+    {"id": 3, "rating": 5, "title": "Parfait", "body": "Je recommande", "reviewer_name": "Sophie", "created_at": "2026-04-03T10:00:00Z", "product_id": 12345}
+  ],
+  "current_page": 2,
+  "per_page": 2,
+  "total": 3
+}

@@ -1,0 +1,78 @@
+# Butt Butter product catalog
+# Bootstrapped 2026-04-22 from https://buttbutter.fr/collections/all.
+# Fill in judgeme_product_id for each core SKU so reviews can be fetched
+# on the next run. Packs inherit reviews from their component SKUs.
+
+products:
+  - slug: creme-apaisante
+    name: La Crème Apaisante
+    url: https://buttbutter.fr/products/butt-butter-creme-apaisante
+    hero_image: https://buttbutter.fr/cdn/shop/files/creme-packshot-white.jpg
+    judgeme_product_id: "751260899"
+    kind: single
+  - slug: complement-circulation-transit
+    name: Le Complément Circulation & Transit
+    url: https://buttbutter.fr/products/butt-butter-feed
+    hero_image: https://buttbutter.fr/cdn/shop/files/MAJ_Packshot_Complement_v2.jpg
+    judgeme_product_id: "524334298"
+    kind: single
+  - slug: probiotique
+    name: Le Probiotique
+    url: https://buttbutter.fr/products/le-probiotique
+    hero_image: https://buttbutter.fr/cdn/shop/files/Probiotique_Packshot_Direct_3.jpg
+    judgeme_product_id: "1590596540"
+    kind: single
+  - slug: soin-lavant-hygiene-intime
+    name: Le Soin Lavant Hygiène Intime
+    url: https://buttbutter.fr/products/le-soin-lavant-hygiene-intime
+    hero_image: https://buttbutter.fr/cdn/shop/files/SoinLavantPackshot_1v2.jpg
+    judgeme_product_id: "1222656601"
+    kind: single
+  - slug: routine-complete-soin-intime
+    name: La Routine Complète Soin Intime
+    url: https://buttbutter.fr/products/la-routine-complete-soin-intime-1
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-entretien-apaisement
+    name: Le Pack Apaisement & Entretien
+    url: https://buttbutter.fr/products/le-pack-entretien-apaisement
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-apaisement-equilibre-digestif
+    name: Le Pack Apaisement & Équilibre Digestif
+    url: https://buttbutter.fr/products/le-pack-apaisement-equilibre-digestif
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-apaisement-prevention
+    name: Le Pack Apaisement & Prévention
+    url: https://buttbutter.fr/products/le-pack-apaisement-prevention
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-apaisement-entretien-prevention
+    name: Le Pack Apaisement, Entretien & Prévention
+    url: https://buttbutter.fr/products/le-pack-apaisement-entretien-prevention
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-circulation-transit-apaisement
+    name: Le Pack Circulation, Transit & Apaisement
+    url: https://buttbutter.fr/products/pack-complement-creme-1
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-entretien-prevention
+    name: Le Pack Entretien & Prévention
+    url: https://buttbutter.fr/products/le-pack-entretien-prevention
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack
+  - slug: pack-total-apaisement-equilibre-digestif
+    name: Le Pack Total Apaisement, Équilibre Digestif & Prévention
+    url: https://buttbutter.fr/products/le-pack-total-apaisement-equilibre-digestif
+    hero_image: ""
+    judgeme_product_id: ""
+    kind: pack

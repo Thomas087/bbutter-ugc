@@ -1,0 +1,43 @@
+[
+  {
+    "post_id": "P1",
+    "url": "https://instagram.com/p/P1",
+    "caption": "post 1",
+    "posted_at": "2026-04-20T10:00:00Z",
+    "media_type": "carousel",
+    "likes": 100,
+    "comments": 5,
+    "hashtags": ["buttbutter"]
+  },
+  {
+    "post_id": "P2",
+    "url": "https://instagram.com/p/P2",
+    "caption": "post 2 (updated)",
+    "posted_at": "2026-04-21T12:00:00Z",
+    "media_type": "image",
+    "likes": 250,
+    "comments": 12,
+    "hashtags": []
+  },
+  {
+    "post_id": "V1",
+    "url": "https://instagram.com/p/V1",
+    "caption": "a reel we should drop",
+    "posted_at": "2026-04-21T14:00:00Z",
+    "media_type": "video",
+    "post_type": "Reel",
+    "likes": 500,
+    "comments": 30,
+    "hashtags": []
+  },
+  {
+    "post_id": "V2",
+    "url": "https://instagram.com/p/V2",
+    "caption": "another video variant",
+    "posted_at": "2026-04-21T15:00:00Z",
+    "content_type": "GraphVideo",
+    "likes": 42,
+    "comments": 3,
+    "hashtags": []
+  }
+]

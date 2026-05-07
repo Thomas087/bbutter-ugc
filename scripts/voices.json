@@ -1,0 +1,17 @@
+{
+  "default": "zlP1wgh6FsmMZswaDa2M",
+  "voices": [
+    {
+      "id": "zlP1wgh6FsmMZswaDa2M",
+      "gender": "Homme",
+      "age": 35,
+      "description": "Neutre"
+    },
+    {
+      "id":"5l4ttmr4SKNgi0HnOelT",
+      "gender": "Homme",
+      "age": 55,
+      "description": "Neutre"
+    }
+  ]
+}
