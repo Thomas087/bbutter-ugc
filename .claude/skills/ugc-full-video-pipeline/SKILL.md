@@ -106,3 +106,120 @@ Pour chaque segment, le set des produits détectés est l'union de tous les slug
 **Faux positifs acceptés** : un keyword "métaphorique" qui matche n'est pas grave — une référence image en plus ralentit Seedance d'~0 ms et n'altère pas la sortie. Un faux négatif (produit cité mais non détecté) casse la fidélité du packaging à l'écran. Donc on biaise vers la sur-détection.
 
 > Si l'utilisateur ajoute un nouveau produit au catalogue, il doit aussi ajouter sa ligne à cette table. C'est volontairement statique pour rester explicite (pas d'embeddings ni d'extraction LLM à chaque run).
+
+## Étape 3 — Générer le segment 1 (le seed du plan ancre)
+
+Le segment 1 est toujours généré **en premier** et **sans face-mask** : c'est lui qui sert de seed pour fabriquer le face-mask utilisé par les segments suivants. Procédure :
+
+### 3.1 — Écrire `frames/segment_1/video_prompt.txt`
+
+```bash
+mkdir -p "<session_dir>/frames/segment_1"
+```
+
+Le prompt suit le template documenté dans `.claude/skills/ugc-video-seedance/SKILL.md` (section "Écriture du video_prompt.txt"). Récapitule ici les pièces non-négociables :
+
+- **Description du personnage** : recopie tels quels les détails de l'en-tête `**Persona :**` du script (âge, look, tenue, cheveux, décor). Pas de paraphrase.
+- **Plan caméra ancre** : `iPhone front-camera selfie clip`, `phone held selfie-style at arm's length`, `front camera lens`, `fixed framing`.
+- **Direction tonale** : dérive du ton du segment et des tags ElevenLabs (`[WHISPER]` → `almost whispered, confidential tone` ; `[SERIOUS]` → `calm, articulated`).
+- **Cadence labiale `[Audio 1]`** (toujours, segment ancre) :
+
+  ```
+  Lip movement, phoneme timing, pauses and breathing are tightly
+  synchronised with [Audio 1] — match every syllable, every micro-pause
+  and every breath in [Audio 1].
+  ```
+
+- **Phrase française exacte** entre guillemets droits, telle qu'elle est dans le script (sans paraphrase, sans traduction). Découpée en sous-phrases avec des `(small pause)` entre les morceaux. Sans cette phrase littérale, Seedance hallucine.
+- **Mouvement labial + expression** : `mouth opens and closes softly with each syllable`, `eyes locked on the lens`, `micro head shifts of 1-3 degrees`, `natural breathing between phrases`.
+- **Stabilité** : `fixed framing — no camera movement, no zoom, no pan, no tilt, no rotation`, `background completely still`, `lighting stable across the whole clip with no flicker`.
+- **Look UGC** : `iPhone front-camera look — soft, slightly compressed, mild barrel distortion, faint chromatic aberration, mild noise in shadows. Realistic, imperfect, honest UGC — not glossy, not cinematic.`
+- **Anti-watermark** : `Absolutely no on-screen text, captions, subtitles, or watermarks visible in the image.`
+
+Le prompt est en **anglais** (Seedance est plus stable en anglais), mais la phrase parlée reste en **français pur** entre guillemets droits.
+
+Référence concrète à recopier-adapter : `output/2026-05-08-le-3eme/frames/segment_2/video_prompt.txt` (déjà sur master).
+
+### 3.2 — Construire la liste `--image` pour le segment 1
+
+Le segment 1 ne reçoit **jamais** le face-mask (il n'existe pas encore). Sa liste `--image` est uniquement composée des références produits détectées à l'Étape 2 :
+
+```python
+images = []
+for slug in products_detected[1]:
+    images.append(catalog[slug]["hero_image"])  # https URL Shopify
+    if size_reference[slug]:
+        images.append(size_reference[slug])     # https URL Shopify
+```
+
+Si `products_detected[1]` est vide, la liste est vide et on omet `--image`.
+
+### 3.3 — Lancer Seedance
+
+```bash
+set -a; source .env; set +a
+
+./scripts/generate_video_seedance.py "<session_dir>" 1 \
+  --character-asset-id "<seedance_asset_id>" \
+  $(printf -- '--image %s ' "${images[@]}")
+```
+
+Notes :
+- L'audio lo-fi est **auto-attaché** par le script à partir de `voice_sections_1.2x_lofi/section-01.mp3`. Ne jamais passer `--audio` manuellement depuis ce skill.
+- `generate_audio=True` est le défaut (Seedance synthétise la voix dans le mp4 final, biaisée par l'audio lo-fi pour la cadence + le texte exact du prompt pour le contenu).
+- Sortie : `<session_dir>/videos/segment_1_final.mp4`. Si `--force` n'est pas passé et que ce fichier existe déjà, **skip** cette étape (mais continue à l'étape 4 face-mask).
+
+## Étape 4 — Extraire le face-mask depuis le segment 1
+
+### 4.1 — Première frame via ffmpeg
+
+```bash
+mkdir -p "<session_dir>/frames/segment_1"
+
+ffmpeg -y -i "<session_dir>/videos/segment_1_final.mp4" \
+  -vframes 1 -update 1 -q:v 2 \
+  "<session_dir>/frames/segment_1/first_frame.png"
+```
+
+`-update 1` silence le warning "filename does not contain an image sequence pattern". `-q:v 2` quasi-lossless. `-vframes 1` strictement la frame 0.
+
+### 4.2 — Construire le prompt face-mask
+
+Réutilise le template documenté dans `.claude/skills/ugc-face-mask-extractor/SKILL.md` (section "Construire le prompt de face-mask"). Récap des blocs non-négociables :
+
+- **Bloc forme opaque** : `paint a single opaque flat oval of solid neutral light grey completely covering the {{persona courte — ex: man's}} face. The shape must be: large enough to cover from forehead to chin and from ear to ear, fully opaque, smooth-edged, no transparency, no gradient, no texture, no features, no eyes, no mouth, no nose, no shadows, no highlights — a clean flat blocking shape sitting on top of the face area like a censorship sticker.`
+- **Bloc EVERYTHING else IDENTICAL** (reprend la formulation exacte de `.claude/skills/ugc-face-mask-extractor/SKILL.md` lignes 64-66) — non négociable, sinon le décor dérive.
+- **Bloc no transparency, no gradient** — non négociable, sinon le visage transparaît.
+- **Bloc Photoreal everywhere except the shape itself + iPhone front-camera look + anti-watermark.**
+
+Récupère les détails persona/décor :
+
+- En priorité depuis `<session_dir>/frames/segment_1/video_prompt.txt` (vient d'être écrit à l'Étape 3.1).
+- Sinon depuis l'en-tête `**Persona :**` du `script.md`.
+
+Aspect ratio : déduis-le des dimensions du PNG via `sips -g pixelWidth -g pixelHeight "<session_dir>/frames/segment_1/first_frame.png"`. Si le ratio est ≈9:16, écris `vertical 9:16` dans le prompt.
+
+Sauvegarde le prompt dans `<session_dir>/frames/segment_1/face_mask_prompt.txt` avant l'appel API (permet d'itérer sans re-rédiger).
+
+### 4.3 — Appel `generate_image.sh --ref`
+
+```bash
+set -a; source .env; set +a
+
+OPENAI_IMAGE_QUALITY=high \
+  ./scripts/generate_image.sh \
+    --ref "<session_dir>/frames/segment_1/first_frame.png" \
+    "<session_dir>/frames/segment_1/first_frame_face_mask.png" \
+    "$(cat "<session_dir>/frames/segment_1/face_mask_prompt.txt")" \
+    1024x1536
+```
+
+`OPENAI_IMAGE_QUALITY=high` est obligatoire (memory utilisateur). En `low` le bord de la forme est crénelé et le décor est reconstruit flou.
+
+Pour un script vertical 9:16, `1024x1536` est la bonne taille (sortie cropée à 864x1536 par défaut). Pour landscape passe `1536x1024 --no-crop`.
+
+### 4.4 — Vérification visuelle rapide
+
+Après la génération, ouvre/affiche les deux PNGs (`first_frame.png` et `first_frame_face_mask.png`) inline pour que l'utilisateur puisse comparer. Si le masque déborde sur le cou/téléphone, ou si le décor a visiblement bougé, **signale-le** dans le rapport final et propose un re-tirage. Ne re-tire pas automatiquement — la variance API a un coût et l'utilisateur doit valider.
+
+> Cas de fallback **gpt-image-2 → gpt-image-1** : `generate_image.sh` retombe automatiquement sur `gpt-image-1` si le compte OpenAI n'est pas vérifié pour `gpt-image-2`. La précision du masque est plus basse mais utilisable. Mentionne le fallback une fois dans le rapport final si déclenché.
