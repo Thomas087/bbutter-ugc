@@ -55,7 +55,7 @@ Si la persona du script ne match aucun personnage existant (pas de `seedance_ass
 - `scripts/characters.json` existe.
 - `ARK_API_KEY` et les variables `CELLAR_*` sont dans `.env`.
 - Le segment N a sa voix lo-fi (`voice_sections_1.2x_lofi/section-<NN>.mp3`).
-- Le segment N a aussi sa voix non-lo-fi (`voice_sections_1.2x/section-<NN>.mp3`) — utilisé pour calculer la durée Seedance (5 ou 10 s).
+- Le segment N a aussi sa voix non-accélérée (`voice_sections/section-<NN>.mp3`) — utilisé pour calculer la durée Seedance (voix originale + 1 s, clampée 4-15 s).
 
 ## Procédure
 

@@ -28,7 +28,7 @@ Ce skill remplace le loop manuel `ugc-video-seedance` → `ugc-face-mask-extract
 
 1. `<session_dir>/script.md` existe et parse au moins un segment.
 2. `<session_dir>/voice_sections_1.2x_lofi/section-<NN>.mp3` existe pour chaque N ciblé.
-3. `<session_dir>/voice_sections_1.2x/section-<NN>.mp3` existe pour chaque N ciblé (utilisé par `generate_video_seedance.py` pour calculer la durée Seedance).
+3. `<session_dir>/voice_sections/section-<NN>.mp3` existe pour chaque N ciblé (utilisé par `generate_video_seedance.py` pour calculer la durée Seedance, basée sur la voix non-accélérée + 1 s).
 4. `scripts/characters.json` existe et a au moins une entrée match avec la persona du script (voir Étape 1).
 5. `scripts/generate_video_seedance.py`, `scripts/generate_image.sh`, `scripts/storage.sh` existent.
 6. `command -v ffmpeg` retourne un chemin.

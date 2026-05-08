@@ -14,11 +14,11 @@ are passed through unchanged.
 Given a session directory laid out by the upstream UGC pipeline:
     <session>/
         frames/segment_<N>/video_prompt.txt        (optional, falls back to default)
-        voice_sections_1.2x/section-<NN>.mp3       (used to pick duration)
+        voice_sections/section-<NN>.mp3            (used to pick duration)
         voice_sections_1.2x_lofi/section-<NN>.mp3  (auto-attached as reference_audio)
 
 this script:
-  1. Reads the accelerated audio duration of the matching voice section to
+  1. Reads the non-accelerated audio duration of the matching voice section to
      pick a Seedance duration (audio + 1 s buffer, ceiled, clamped to 4-15 s),
      unless --duration is given.
   2. If no --audio is given and the lo-fi voice file exists, auto-attaches it
@@ -261,7 +261,7 @@ def main() -> int:
     session = args.session_dir.resolve()
     n = args.segment_num
     seg_dir = session / "frames" / f"segment_{n}"
-    voice = session / "voice_sections_1.2x" / f"section-{n:02d}.mp3"
+    voice = session / "voice_sections" / f"section-{n:02d}.mp3"
     voice_lofi = session / "voice_sections_1.2x_lofi" / f"section-{n:02d}.mp3"
 
     if not voice.exists():
