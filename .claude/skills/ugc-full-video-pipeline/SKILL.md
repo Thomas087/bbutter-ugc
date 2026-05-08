@@ -50,7 +50,7 @@ Pour chaque segment, extrais :
 Ensuite, pour chaque segment, calcule deux flags :
 
 - **`is_anchor`** : `True` ssi `stage_direction.lower()` contient le substring `plan ancre`.
-- **`products_detected`** : liste des slugs catalogue dont au moins un alias keyword apparaît dans `(voice_text + on_screen_text + insert_annotations)`.lower(). Voir l'alias map à l'Étape 2.
+- **`products_detected`** : liste des slugs catalogue dont au moins un alias keyword apparaît dans `(voice_text + insert_annotations)`.lower(). Voir l'alias map à l'Étape 2. **Le `on_screen_text` est volontairement exclu** — il contient typiquement un CTA / overlay brand chip (ex : `Butt Butter — La Crème Apaisante`) qui mentionne le produit sans qu'il soit visuellement dans le plan. Inclure le on-screen-text produirait des faux positifs (packshot attaché à un selfie où le tube n'apparaît pas).
 
 Récupère également l'en-tête du script pour la persona (ligne `**Persona :**`) et le décor (souvent dans la même ligne, ex : `Tournage dans une salle de bain classique`).
 
@@ -101,7 +101,7 @@ Capture l'URL si présente. Sinon, marque `size_reference = None` pour ce slug.
 | `probiotique` | `probiotique` |
 | `soin-lavant-hygiene-intime` | `soin lavant`, `savon`, `lavant` |
 
-Pour chaque segment, le set des produits détectés est l'union de tous les slugs dont au moins un keyword apparaît dans `(voice_text + on_screen_text + insert_annotations)` (toujours en lower-case).
+Pour chaque segment, le set des produits détectés est l'union de tous les slugs dont au moins un keyword apparaît dans `(voice_text + insert_annotations)` (toujours en lower-case). Le `on_screen_text` est exclu — voir Étape 0 pour la justification.
 
 **Faux positifs acceptés** : un keyword "métaphorique" qui matche n'est pas grave — une référence image en plus ralentit Seedance d'~0 ms et n'altère pas la sortie. Un faux négatif (produit cité mais non détecté) casse la fidélité du packaging à l'écran. Donc on biaise vers la sur-détection.
 
