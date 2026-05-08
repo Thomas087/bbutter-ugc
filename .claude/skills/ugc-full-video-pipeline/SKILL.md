@@ -223,3 +223,93 @@ Pour un script vertical 9:16, `1024x1536` est la bonne taille (sortie cropée à
 Après la génération, ouvre/affiche les deux PNGs (`first_frame.png` et `first_frame_face_mask.png`) inline pour que l'utilisateur puisse comparer. Si le masque déborde sur le cou/téléphone, ou si le décor a visiblement bougé, **signale-le** dans le rapport final et propose un re-tirage. Ne re-tire pas automatiquement — la variance API a un coût et l'utilisateur doit valider.
 
 > Cas de fallback **gpt-image-2 → gpt-image-1** : `generate_image.sh` retombe automatiquement sur `gpt-image-1` si le compte OpenAI n'est pas vérifié pour `gpt-image-2`. La précision du masque est plus basse mais utilisable. Mentionne le fallback une fois dans le rapport final si déclenché.
+
+## Étape 5 — Générer les segments 2..N (séquentiel)
+
+Boucle séquentielle, **jamais en parallèle**. L'utilisateur veut pouvoir inspecter la lipsync de chaque plan avant de payer le suivant.
+
+Pour chaque segment N ≥ 2 (dans l'ordre du script, sauf si `--segments` filtre) :
+
+### 5.1 — Décider du template de prompt selon `is_anchor`
+
+- **Si `is_anchor == True`** : utilise le template "plan ancre" décrit à l'Étape 3.1 (selfie front-camera + cadence `[Audio 1]` + phrase française exacte + tag ElevenLabs).
+- **Si `is_anchor == False`** (insert/B-roll, ex : `*Insert : gros plan tube en main.*`) : utilise un template close-up :
+
+  ```
+  Macro/close-up shot of {{description du sujet — ex: a hand holding the
+  Butt Butter cream tube}}. Photoreal, soft natural daylight, shallow
+  depth of field, iPhone rear-camera UGC look. Stable framing — no zoom,
+  no pan. The product packaging is clearly readable. No on-screen text,
+  no captions, no watermarks.
+  ```
+
+  Pas de cadence `[Audio 1]` pour les inserts (pas de lipsync à driver). Pas de phrase française exacte non plus (l'insert est silencieux côté image). L'audio lo-fi est **quand même** attaché — Seedance utilise sa durée pour caler la durée vidéo, et la voix de fond reste cohérente avec le segment.
+
+Écris le prompt dans `<session_dir>/frames/segment_<N>/video_prompt.txt` avant l'appel.
+
+### 5.2 — Construire la liste `--image`
+
+Ordre :
+
+1. **Si `is_anchor == True` ET N ≥ 2** : ajoute le face-mask local
+
+   ```
+   <session_dir>/frames/segment_1/first_frame_face_mask.png
+   ```
+
+   `generate_video_seedance.py` détecte que c'est un chemin local et le passe à `storage.sh` pour l'uploader sur Cellar avant l'appel API.
+
+2. **Pour chaque slug dans `products_detected[N]`** :
+   - `catalog[slug]["hero_image"]` (https Shopify, passthrough)
+   - `size_reference[slug]` si non-`None` (https Shopify, passthrough)
+
+Si la liste est vide (segment ancre sans produit + segment 1 omis car face-mask seulement seg2+), c'est valide — on appelle Seedance avec character asset + audio lo-fi seuls.
+
+### 5.3 — Lancer Seedance
+
+```bash
+set -a; source .env; set +a
+
+./scripts/generate_video_seedance.py "<session_dir>" "$N" \
+  --character-asset-id "<seedance_asset_id>" \
+  $(printf -- '--image %s ' "${images[@]}")
+```
+
+Mêmes règles qu'à l'Étape 3.3 : pas de `--audio` manuel (auto-attaché), `generate_audio=True` par défaut, sortie `<session_dir>/videos/segment_<N>_final.mp4`.
+
+### 5.4 — Skip si déjà existant
+
+Avant de lancer Seedance pour un N donné, vérifie `<session_dir>/videos/segment_<N>_final.mp4`. S'il existe ET que `--force` n'a pas été passé, log une ligne et skip :
+
+```
+[segment <N>] skipped (already exists, pass --force to regenerate)
+```
+
+### 5.5 — Si Seedance échoue sur un segment
+
+Si `generate_video_seedance.py` retourne un code de sortie ≠ 0 ou si la tâche Ark passe en `status=failed`, **log l'erreur** (recopie le message Ark) et **continue avec le segment N+1**. Ne stoppe pas le pipeline pour un segment fautif. Le rapport final marquera les segments manquants.
+
+## Étape 6 — Rapport final à l'utilisateur
+
+Après la dernière itération, affiche un bloc compact, **sans commentaire** sur les étapes qui ont marché. Format :
+
+```
+Personnage Seedance : <id> (asset <seedance_asset_id>) — persona <résumé>.
+Face-mask : <session_dir>/frames/segment_1/first_frame_face_mask.png[, gpt-image-1 fallback]
+
+segment 1 — anchor=Y — products=[]                 — videos/segment_1_final.mp4 (5.0s, 1.3 MB)
+segment 2 — anchor=Y — products=[]                 — videos/segment_2_final.mp4 (5.0s, 1.4 MB) [face mask attached]
+segment 3 — anchor=Y — products=[]                 — videos/segment_3_final.mp4 (10.0s, 2.5 MB) [face mask attached]
+segment 4 — anchor=Y — products=[creme-apaisante]  — videos/segment_4_final.mp4 (10.0s, 2.6 MB) [face mask + packshot + size ref]
+segment 5 — anchor=Y — products=[]                 — videos/segment_5_final.mp4 (5.0s, 1.3 MB) [face mask attached]
+
+Suite : concat des segments via ffmpeg concat ou scripts/combine_segment.sh.
+```
+
+Récupère durée + taille via `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 <mp4>` et `ls -lh <mp4>`. Si un segment a échoué, remplace la ligne par :
+
+```
+segment 4 — FAILED — <message Ark résumé>
+```
+
+Pas de commentaire gratuit ("génération réussie", "fichiers écrits"). Seulement ce qui est notable ou cassé.
