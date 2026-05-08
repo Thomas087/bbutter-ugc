@@ -6,7 +6,8 @@
 #   --voice ID        voice id ElevenLabs (défaut zlP1wgh6FsmMZswaDa2M, voix masculine FR)
 #   --out PATH        chemin MP3 de sortie (défaut : même nom que le script, extension .mp3)
 #   --model ID        modèle ElevenLabs (défaut eleven_v3)
-#   --stability N     stabilité de la voix 0-1 (défaut 0.5)
+#   --stability N     stabilité de la voix 0-1 (défaut 0 = preset "Creative" max,
+#                     le plus expressif ; 0.5 = Natural ; 1.0 = Robust).
 #   --per-section     écrit aussi un MP3 par segment "**Voix :** "..."" sous <out_dir>/<basename>_sections/
 #
 # Comportement :
@@ -31,7 +32,7 @@ SCRIPT_PATH=""
 VOICE_ID="zlP1wgh6FsmMZswaDa2M"
 OUT=""
 MODEL="eleven_v3"
-STABILITY="0.5"
+STABILITY="0"
 PER_SECTION="0"
 
 while [[ $# -gt 0 ]]; do
