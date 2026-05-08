@@ -4,6 +4,7 @@
 - **Prix :** 32,90 €
 - **Format :** 80 gélules végétales (cure de 20 jours)
 - **Image héro :** https://buttbutter.fr/cdn/shop/files/MAJ_Packshot_Complement_v2.jpg
+- **Référence taille du produit :** https://cdn.shopify.com/s/files/1/0624/6658/8862/files/Test_main_-90_1.jpg?v=1778238389
 
 ## Positionnement
 

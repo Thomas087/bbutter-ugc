@@ -4,6 +4,7 @@
 - **Prix :** 27,90 €
 - **Format :** tube 30 mL
 - **Image héro :** https://buttbutter.fr/cdn/shop/files/creme-packshot-white.jpg
+- **Référence taille du produit :** https://cdn.shopify.com/s/files/1/0624/6658/8862/files/Test_main_-100-v2.jpg?v=1778238507
 
 ## Positionnement
 

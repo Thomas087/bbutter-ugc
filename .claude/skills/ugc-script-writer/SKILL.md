@@ -46,7 +46,7 @@ Code de tonalité pour ces 10 premiers hooks :
 - Direct, vécu, parfois un peu cru
 - Formats efficaces : "POV : …", "Si toi aussi…", "Personne en parle mais…", "Truc bizarre que personne ose dire…", "Y a 3 produits dans ma salle de bain dont…"
 - Vulnérabilité assumée, jamais de moralisation
-- Évite le mot "hémorroïdes" dans le hook lui-même quand possible (shadowban TikTok/Insta sur les 3 premières secondes). Préfère des contournements : "ce produit", "ce truc", "le problème dont personne parle", "la crème la plus gênante à acheter"
+- Évoquer le terme "hémorroïdes" au moins une fois dans la vidéo
 
 Si l'utilisateur en demande "plus", "d'autres", "plus sérieux", produis **10 hooks supplémentaires** sur un registre différent :
 - Témoignage posé, pédagogique, informationnel
@@ -237,7 +237,6 @@ Pour TikTok, Reels et Shorts :
 - Format vertical 9:16 systématique
 - Hook impératif dans les 3 premières secondes
 - Texte à l'écran en complément de la voix (sound-off-friendly : 70% des vues TikTok se font sans le son)
-- Éviter le mot tabou direct ("hémorroïdes") dans le hook lui-même
 - Pas de logo en intro, seulement en CTA final
 - Pas de musique de pub, suggérer un son tendance natif si pertinent
 

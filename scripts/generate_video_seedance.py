@@ -13,19 +13,28 @@ are passed through unchanged.
 
 Given a session directory laid out by the upstream UGC pipeline:
     <session>/
-        frames/segment_<N>/video_prompt.txt   (optional, falls back to default)
-        voice_sections_1.2x/section-<NN>.mp3  (used to pick duration)
+        frames/segment_<N>/video_prompt.txt        (optional, falls back to default)
+        voice_sections_1.2x/section-<NN>.mp3       (used to pick duration)
+        voice_sections_1.2x_lofi/section-<NN>.mp3  (auto-attached as reference_audio)
 
 this script:
   1. Reads the accelerated audio duration of the matching voice section to
-     pick a Seedance duration (5 or 10 seconds), unless --duration is given.
-  2. Builds the content array: prompt text + one reference_image entry per
+     pick a Seedance duration (audio + 1 s buffer, ceiled, clamped to 4-15 s),
+     unless --duration is given.
+  2. If no --audio is given and the lo-fi voice file exists, auto-attaches it
+     as reference_audio (drives lipsync cadence; referenced as [Audio 1] in
+     the prompt).
+  3. Builds the content array: prompt text + one reference_image entry per
      --character-asset-id (asset:// URI) and per --image (https URL — local
      path uploaded via storage.sh first), plus one reference_audio entry per
      --audio (same upload-if-local rule).
-  3. POSTs to /api/v3/contents/generations/tasks with Bearer auth.
-  4. Polls task status until succeeded or failed.
-  5. Downloads the generated MP4 to <session>/videos/<output-name>.
+  4. POSTs to /api/v3/contents/generations/tasks with Bearer auth.
+     generate_audio is ON by default (Seedance synthesises the voice track
+     guided by the audio reference and the literal text in the prompt); pass
+     --no-generate-audio to get a silent video for manual muxing.
+  5. Polls task status until succeeded or failed.
+  6. Downloads the generated MP4 to <session>/videos/<output-name>
+     (default: segment_<N>_final.mp4).
 
 Reads ARK_API_KEY from the environment. Source the project .env first
 (`set -a; source .env; set +a`) or export it. Cellar credentials for
@@ -37,9 +46,9 @@ Usage:
         [--character-asset-id ...] \\
         [--image path/to/product.png] [--image https://...] \\
         [--audio path/to/voice.mp3]  [--audio https://...] \\
-        [--prompt TEXT] [--duration 5|10] [--ratio adaptive|16:9|9:16|1:1] \\
-        [--model dreamina-seedance-2-0-260128] [--generate-audio] [--no-watermark] \\
-        [--output-name segment_1_seedance.mp4]
+        [--prompt TEXT] [--duration 4..15] [--ratio adaptive|16:9|9:16|1:1] \\
+        [--model dreamina-seedance-2-0-260128] [--no-generate-audio] [--no-watermark] \\
+        [--output-name segment_1_final.mp4]
 
 Exit codes:
   0 — video written
@@ -51,6 +60,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -67,11 +77,13 @@ STORAGE_SH = REPO_ROOT / "scripts" / "storage.sh"
 DEFAULT_PROMPT = (
     "Fixed front-camera selfie framing, vertical 9:16, iPhone UGC look. "
     "The character holds the phone at arm's length and speaks directly into "
-    "the lens in a calm, natural tone. Lips move with natural French phonemes, "
-    "micro head shifts of 1–3 degrees, natural breathing, eyes locked on the "
-    "lens. No camera movement, no zoom, no pan. Stable natural daylight. "
-    "Realistic, imperfect UGC — not glossy, not cinematic. Absolutely no text, "
-    "no captions, no subtitles, no watermarks visible in the image."
+    "the lens in a calm, natural tone. Lip movement, phoneme timing, pauses "
+    "and breathing are tightly synchronised with [Audio 1] — match every "
+    "syllable, every micro-pause and every breath in [Audio 1]. Micro head "
+    "shifts of 1–3 degrees, natural breathing, eyes locked on the lens. No "
+    "camera movement, no zoom, no pan. Stable natural daylight. Realistic, "
+    "imperfect UGC — not glossy, not cinematic. Absolutely no text, no "
+    "captions, no subtitles, no watermarks visible in the image."
 )
 
 
@@ -122,8 +134,15 @@ def audio_duration_seconds(path: Path) -> float:
     return float(out)
 
 
+SEEDANCE_MIN_DURATION = 4
+SEEDANCE_MAX_DURATION = 15
+
+
 def pick_duration(audio_seconds: float) -> int:
-    return 5 if audio_seconds <= 7.5 else 10
+    """Pick a Seedance duration that gives at least 1 s of padding over the
+    audio length, clamped to the API range [4, 15] seconds."""
+    target = math.ceil(audio_seconds + 1.0)
+    return max(SEEDANCE_MIN_DURATION, min(SEEDANCE_MAX_DURATION, target))
 
 
 def http_post_json(url: str, token: str, payload: dict) -> dict:
@@ -197,7 +216,15 @@ def main() -> int:
         "used in the API payload). May be repeated. role=reference_audio.",
     )
     ap.add_argument("--prompt", type=str, default=None)
-    ap.add_argument("--duration", type=int, choices=[5, 10], default=None)
+    ap.add_argument(
+        "--duration",
+        type=int,
+        choices=range(SEEDANCE_MIN_DURATION, SEEDANCE_MAX_DURATION + 1),
+        metavar=f"{{{SEEDANCE_MIN_DURATION}..{SEEDANCE_MAX_DURATION}}}",
+        default=None,
+        help="Override Seedance video duration in seconds. "
+        f"Allowed: {SEEDANCE_MIN_DURATION}-{SEEDANCE_MAX_DURATION} integer.",
+    )
     ap.add_argument(
         "--ratio",
         default="9:16",
@@ -205,10 +232,11 @@ def main() -> int:
     )
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument(
-        "--generate-audio",
+        "--no-generate-audio",
         action="store_true",
-        help="Ask Seedance to generate audio. Off by default — the UGC pipeline "
-        "already produces voice from voice_sections_1.2x and combines it later.",
+        help="Disable Seedance audio generation. By default Seedance generates "
+        "the voice track using the audio reference as a style/cadence guide; "
+        "use this flag to get a silent video for manual muxing.",
     )
     ap.add_argument(
         "--no-watermark",
@@ -219,7 +247,7 @@ def main() -> int:
         "--output-name",
         default=None,
         help="Filename for the saved mp4 under <session>/videos/. "
-        "Defaults to segment_<N>_seedance.mp4.",
+        "Defaults to segment_<N>_final.mp4.",
     )
     ap.add_argument("--poll-interval", type=float, default=15.0)
     ap.add_argument("--max-wait", type=float, default=900.0)
@@ -234,10 +262,18 @@ def main() -> int:
     n = args.segment_num
     seg_dir = session / "frames" / f"segment_{n}"
     voice = session / "voice_sections_1.2x" / f"section-{n:02d}.mp3"
+    voice_lofi = session / "voice_sections_1.2x_lofi" / f"section-{n:02d}.mp3"
 
     if not voice.exists():
         print(f"generate_video_seedance.py: missing input: {voice}", file=sys.stderr)
         return 1
+
+    if not args.audio and voice_lofi.exists():
+        args.audio = [str(voice_lofi)]
+        print(
+            f"[segment {n}] auto-attached lo-fi audio reference: {voice_lofi}",
+            file=sys.stderr,
+        )
 
     audio_sec = audio_duration_seconds(voice)
     duration = args.duration or pick_duration(audio_sec)
@@ -281,7 +317,7 @@ def main() -> int:
     payload = {
         "model": args.model,
         "content": content,
-        "generate_audio": bool(args.generate_audio),
+        "generate_audio": not args.no_generate_audio,
         "ratio": args.ratio,
         "duration": duration,
         "watermark": not args.no_watermark,
@@ -322,7 +358,7 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 2
-            out_name = args.output_name or f"segment_{n}_seedance.mp4"
+            out_name = args.output_name or f"segment_{n}_final.mp4"
             out_path = session / "videos" / out_name
             print(f"[segment {n}] downloading {video_url}", file=sys.stderr)
             http_download(video_url, out_path)
