@@ -78,6 +78,11 @@ fi
 export AWS_ACCESS_KEY_ID="$CELLAR_ADDON_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$CELLAR_ADDON_KEY_SECRET"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
+# Cellar (and other S3-compatibles) require Content-Length and reject the
+# streaming/trailer checksum that aws-cli 2.30+ enables by default. Force
+# checksums to "when_required" so PutObject sends a fixed-length body.
+export AWS_REQUEST_CHECKSUM_CALCULATION="${AWS_REQUEST_CHECKSUM_CALCULATION:-when_required}"
+export AWS_RESPONSE_CHECKSUM_VALIDATION="${AWS_RESPONSE_CHECKSUM_VALIDATION:-when_required}"
 
 ENDPOINT="https://$CELLAR_ADDON_HOST"
 PUBLIC_BASE="https://$CELLAR_BUCKET.$CELLAR_ADDON_HOST"
@@ -104,10 +109,12 @@ local_size() { wc -c < "$1" | tr -d ' '; }
 # Print "<size> <etag>" if the key exists, empty string otherwise.
 remote_size_etag() {
   local key="$1"
-  aws --endpoint-url "$ENDPOINT" s3api head-object \
-      --bucket "$CELLAR_BUCKET" --key "$key" \
-      --query '[ContentLength, ETag]' --output text 2>/dev/null \
-    | tr -d '"'
+  local out
+  if out=$(aws --endpoint-url "$ENDPOINT" s3api head-object \
+        --bucket "$CELLAR_BUCKET" --key "$key" \
+        --query '[ContentLength, ETag]' --output text 2>/dev/null); then
+    printf '%s\n' "$out" | tr -d '"'
+  fi
 }
 
 cmd="$1"; shift

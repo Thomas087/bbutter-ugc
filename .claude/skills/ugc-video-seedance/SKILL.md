@@ -1,0 +1,172 @@
+---
+name: ugc-video-seedance
+description: >-
+  Génère un plan vidéo UGC Butt Butter, segment par segment, via l'API Seedance (BytePlus Ark, modèle `dreamina-seedance-2-0-...`). Pipeline en deux temps pour préserver la voix lo-fi exacte : étape 1, écrit `frames/segment_<N>/video_prompt.txt` avec la phrase française exacte du segment entre guillemets pour piloter la lipsync, puis lance `scripts/generate_video_seedance.py` en muet (sans `--generate-audio`, sinon Seedance hallucine le texte) ; étape 2, muxe la voix `voice_sections_1.2x_lofi/section-<NN>.mp3` par-dessus avec ffmpeg → `videos/segment_<N>_final.mp4`. Lit `scripts/characters.json` (champ `seedance_asset_id`) pour résoudre le character asset BytePlus depuis la persona du script. Lit `brand/products/catalog.yaml` pour récupérer le packshot du produit en référence visuelle. Utilise ce skill dès que l'utilisateur demande "génère la vidéo Seedance", "génère le segment N en vidéo", "vidéo UGC du script", "plan vidéo Seedance", "vidéo avec lipsync sur la voix lo-fi", "génère le clip pour le segment X", ou veut produire / régénérer un plan vidéo à partir d'un segment de script déjà voicé. Utilise-le aussi quand l'utilisateur veut tester un seul plan avant d'enchaîner toute la vidéo, ou quand il veut raffiner la lipsync d'un plan existant.
+---
+
+# UGC Video Seedance — Butt Butter
+
+Ce skill prend un script UGC Butt Butter (sortie `ugc-script-writer`) avec sa voix lo-fi déjà produite (sortie `ugc-voice-lofi`) et génère un plan vidéo via l'API Seedance (BytePlus Ark, modèle `dreamina-seedance-2-0-260128`), un segment à la fois. Il est consommé en aval de `ugc-script-writer` → `ugc-voice-generator` → `ugc-voice-lofi`.
+
+## Pourquoi un pipeline en deux temps
+
+L'API Seedance peut générer du son si on lui passe `generate_audio=True`. En pratique, dans ce mode :
+
+- La `reference_audio` ne sert que de **guide de timbre** — Seedance hallucine n'importe quel texte qui colle au visuel.
+- Le timing audio peut s'écarter franchement de la voix off déjà produite.
+
+Pour obtenir notre voix lo-fi exacte, calée sur la lipsync :
+
+1. **Étape 1 — vidéo muette pilotée par le prompt.** On écrit un `video_prompt.txt` qui contient la **phrase française exacte** du segment entre guillemets droits. Seedance lit ces phrases comme indication de mouvement labial et génère un plan où le personnage prononce ce texte précis, sans piste audio (pas de `--generate-audio`).
+2. **Étape 2 — mux ffmpeg.** On ajoute par-dessus notre fichier lo-fi du segment correspondant. La lipsync, calée sur le texte du prompt, correspond à la voix lo-fi puisque c'est exactement le même texte.
+
+Ce détour est obligatoire : c'est la seule façon de garder la voix lo-fi exacte (timbre + acoustique de la salle de bain) **et** une lipsync qui parle vraiment ce texte.
+
+## Entrées
+
+- **Script source** : chemin vers un `.md` produit par `ugc-script-writer`. Si l'utilisateur ne précise pas, prends le dernier dossier sous `output/` (le plus récent par date) et son `script.md`.
+- **Numéro de segment** : index 1-based (1 = HOOK, 2 = RÉVÉLATION, etc.). Doit correspondre à l'ordre des sections horodatées du markdown — c'est le même index que celui utilisé par `ugc-voice-generator` pour les fichiers `section-NN.mp3`.
+- **Persona** : à lire dans l'en-tête du script. Sert à résoudre le `seedance_asset_id`.
+- **Voix lo-fi** : `<session>/voice_sections_1.2x_lofi/section-<NN>.mp3` (sortie de `ugc-voice-lofi`). Si absent, signale qu'il faut d'abord faire tourner `ugc-voice-lofi` et stoppe — ne génère pas avec la voix non-lo-fi par défaut, ce serait un changement silencieux du rendu.
+
+## Catalogue des personnages
+
+Le catalogue est dans `scripts/characters.json` (catalogue partagé avec `ugc-voice-generator`). Champs utilisés ici : `id`, `gender`, `age`, `description`, `seedance_asset_id`.
+
+Listing :
+
+```bash
+jq -r '.characters[] | "\(.id)\t\(.gender)\t\(.age)\t\(.description)\t\(.seedance_asset_id)"' scripts/characters.json
+```
+
+### Règle de sélection
+
+Identique à `ugc-voice-generator` :
+
+1. **Genre** : strictement match.
+2. **Âge** : différence absolue minimale.
+3. **Description** : départage avec le ton dominant du script si pertinent.
+
+Si la persona du script ne match aucun personnage existant (pas de `seedance_asset_id` du bon genre/âge), **signale-le et stoppe**. Demande à l'utilisateur d'enregistrer un nouveau character asset BytePlus (Console → Digital Character) puis d'ajouter la ligne à `characters.json`. Ne défaut pas sur un mauvais personnage — la cohérence visuelle entre plans repose sur ce match.
+
+## Pré-vérifications (silencieuses sauf erreur)
+
+- `scripts/generate_video_seedance.py` existe et est exécutable.
+- `scripts/characters.json` existe.
+- `ARK_API_KEY` et les variables `CELLAR_*` sont dans `.env`.
+- `ffmpeg` installé.
+- Le segment N a sa voix lo-fi (`voice_sections_1.2x_lofi/section-<NN>.mp3`).
+- Le segment N a aussi sa voix non-lo-fi (`voice_sections_1.2x/section-<NN>.mp3`) — utilisé par `generate_video_seedance.py` pour calculer la durée Seedance (5 ou 10 s).
+
+## Procédure
+
+### 1. Résolution du personnage
+
+Charge `scripts/characters.json`, sélectionne le personnage correspondant à la persona du script (genre strict + âge le plus proche). Récupère son `seedance_asset_id`. Annonce :
+
+`Personnage Seedance : <id> (asset <seedance_asset_id>) — match avec la persona <…>.`
+
+### 2. Référence visuelle produit
+
+Lis `brand/products/catalog.yaml` pour récupérer le `hero_image` (URL HTTPS) du produit principal du segment :
+
+- Si la voix off du segment mentionne un produit (ex : "celui-là, c'est une crème"), prends le packshot du produit cité.
+- Si le segment ne mentionne pas de produit (HOOK générique), prends le packshot du produit héros du script (généralement la Crème Apaisante) pour aider la cohérence visuelle entre plans, ou omets le `--image` si la scène est purement personnage seul.
+
+L'URL est passée telle quelle à `--image` — pas besoin d'upload, le packshot Shopify est déjà public.
+
+### 3. Écriture du video_prompt.txt
+
+Crée `<session>/frames/segment_<N>/video_prompt.txt` avec un prompt qui contient :
+
+- **Description du personnage** dérivée de la persona du script : âge, look, tenue, environnement. Recopie tels quels les détails de l'en-tête du script (`pull en cachemire`, `cheveux gris poivre et sel`, `salle de bain classique`, etc.).
+- **Indication de plan caméra** : pour un plan ancre selfie, "iPhone front-camera selfie clip", "phone held selfie-style at arm's length", "front camera lens", "fixed framing".
+- **Direction tonale** : ton vulnérable / posé / cash, dérivé du contenu et des tags ElevenLabs (`[WHISPER]` → "almost whispered, confidential tone", `[SERIOUS]` → "calm, articulated"). 
+- **CRUCIAL — la phrase française exacte du segment entre guillemets droits**, découpée en sous-phrases avec indication des micro-pauses :
+  ```
+  Lips move with the natural cadence of three short French phrases —
+  "Y a 3 trucs dans mon armoire de salle de bain" (small pause),
+  "y en a 2 dont je parle" (small pause),
+  "le 3ème, on est entre nous."
+  ```
+  C'est ce qui permet à Seedance de produire la lipsync correcte. **Sans cette phrase exacte dans le prompt, Seedance hallucine le texte.**
+- **Mouvement labial et expression** : "mouth opens and closes softly with each syllable", "eyes locked on the lens", "micro head shifts of 1–3 degrees", "natural breathing between phrases", expressions cohérentes avec le ton ("conspiratorial half-smile", "subtle eyebrow lift").
+- **Stabilité** : "fixed framing — no camera movement, no zoom, no pan, no tilt, no rotation", "background completely still", "lighting stable across the whole clip with no flicker".
+- **Look UGC** : "iPhone front-camera look — soft, slightly compressed, mild barrel distortion, faint chromatic aberration, mild noise in shadows. Realistic, imperfect, honest UGC — not glossy, not cinematic."
+- **Anti-watermark** : "Absolutely no on-screen text, captions, subtitles, or watermarks visible in the image."
+
+Modèle de référence : `output/2026-05-08-le-3eme/frames/segment_1/video_prompt.txt`.
+
+Le prompt est en **anglais** (Seedance est plus stable en anglais), **mais les phrases parlées restent en français pur** entre guillemets droits — pas de paraphrase anglaise, sinon le modèle peut prononcer le mot anglais à la place.
+
+### 4. Génération de la vidéo muette
+
+Lance `generate_video_seedance.py` **sans** `--generate-audio` :
+
+```bash
+set -a; source .env; set +a
+./scripts/generate_video_seedance.py <session_dir> <N> \
+  --character-asset-id <seedance_asset_id> \
+  --image <hero_image_url> \
+  --output-name segment_<N>_seedance_silent.mp4
+```
+
+- `--character-asset-id` est obligatoire (vient du catalogue).
+- `--image` peut être omis si pas de produit pertinent.
+- Pas de `--audio` : non utilisé pour la lipsync en mode muet (Seedance ignore `reference_audio` quand `generate_audio=False`), ça évite un upload inutile sur Cellar.
+- Le script appelle `scripts/storage.sh` pour uploader d'éventuels fichiers locaux passés en `--image` ou `--audio`. `storage.sh` exporte déjà `AWS_REQUEST_CHECKSUM_CALCULATION=when_required` pour Cellar (sans ça, `MissingContentLength`).
+
+Sortie : `<session_dir>/videos/segment_<N>_seedance_silent.mp4` (vidéo muette, 5 ou 10 s selon la durée audio du segment).
+
+### 5. Mux de la voix lo-fi
+
+```bash
+ffmpeg -y -hide_banner -loglevel error \
+  -i <session_dir>/videos/segment_<N>_seedance_silent.mp4 \
+  -i <session_dir>/voice_sections_1.2x_lofi/section-<NN>.mp3 \
+  -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart \
+  <session_dir>/videos/segment_<N>_final.mp4
+```
+
+Sortie : `<session_dir>/videos/segment_<N>_final.mp4`. Durée = durée de l'audio (`-shortest`).
+
+> Pourquoi pas `combine_segment.sh` : ce script lit les chemins fixes `videos/segment_<N>.mp4` + `voice_sections_1.2x/section-<NN>.mp3` (voix non-lo-fi). Il ne convient pas pour ce skill — on inline ffmpeg avec les chemins lo-fi.
+
+## Sortie attendue à l'utilisateur
+
+Réponse courte qui contient, dans l'ordre :
+
+1. Personnage Seedance choisi (1 ligne).
+2. Chemin de la vidéo finale (`videos/segment_<N>_final.mp4`).
+3. Durée et taille du fichier (extraites avec `ffprobe` + `ls -lh`).
+4. Si la lipsync semble dériver visiblement, suggérer une piste corrective (raffinage des `(small pause)` dans le prompt, découpage en deux segments, ou outil de lipsync explicite type Sync ou Hedra en post-process). Pas de diagnostic gratuit si la lipsync paraît correcte.
+
+Pas de commentaire sur le déroulé technique (génération réussie, fichiers écrits) — c'est implicite.
+
+## Override courants
+
+- **Plusieurs segments** : génère segment par segment, en relançant le skill une fois par N. Chaque segment a son propre `video_prompt.txt` à raffiner. Pas de mode batch implicite — c'est volontaire, la qualité de la lipsync se gagne plan par plan.
+- **Régénération d'un segment** : supprime `videos/segment_<N>_seedance_silent.mp4` et `videos/segment_<N>_final.mp4`, ajuste le prompt, relance. Ou utilise un `--output-name` différent (ex : `segment_<N>_seedance_silent_v2.mp4`) pour comparer.
+- **Variante avec audio Seedance** : si l'utilisateur veut explorer la voix générée par Seedance (clonée depuis la `reference_audio`), passe `--generate-audio` **et** `--audio <voice_lofi.mp3>`. Le texte sera halluciné si le prompt ne contient pas la phrase exacte ; même avec, le rendu vocal n'égale pas la voix lo-fi traitée. À utiliser pour exploration visuelle uniquement, pas pour la version finale.
+- **Durée forcée** : `--duration 5` ou `--duration 10` pour outrepasser le calcul auto basé sur la durée du fichier voice_sections_1.2x.
+- **Watermark off** : `--no-watermark` (par défaut le watermark Seedance est laissé activé).
+- **Personnage forcé** : si l'utilisateur passe un `seedance_asset_id` explicite (ex : pour tester un nouvel asset non encore inscrit dans `characters.json`), skip la sélection auto.
+
+## Anti-patterns à éviter
+
+- **Lancer Seedance sans `video_prompt.txt`** : le prompt par défaut intégré au script Python est trop générique ("natural French phonemes") et fait halluciner Seedance sur le texte. Toujours écrire un prompt spécifique avec la phrase exacte.
+- **Activer `--generate-audio` en pensant que `reference_audio` va piloter le texte** : non. `reference_audio` ne sert qu'à cloner le timbre. Le texte vient du prompt seul.
+- **Faire confiance à la lipsync sur des phrases longues** : Seedance gère bien 1 à 3 phrases courtes par segment de 5 secondes. Si le segment dépasse 8-9 mots de voix off, scinder en deux plans vidéo distincts ou passer en segment 10 secondes.
+- **Mélanger anglais et français dans la voix off du prompt** : les phrases parlées doivent rester en français pur, sans paraphrase anglaise — sinon Seedance peut prononcer un mot anglais à la place.
+- **Oublier le packshot quand le segment montre le produit** : sans `--image`, le tube de crème dans la main du personnage sera générique. Avec le packshot, Seedance reproduit raisonnablement le design réel.
+- **Défaut sur un mauvais personnage** : si le genre/âge ne match pas, ne génère pas avec un personnage approximatif. Stoppe et fais ajouter le bon character asset.
+
+## Erreurs possibles
+
+- **`ARK_API_KEY not set`** : ajouter dans `.env`.
+- **`storage.sh ... failed (exit 254)`** : aws-cli 2.34+ retourne 254 sur HeadObject 404 (clé absente). La version actuelle de `storage.sh` gère ce cas, mais si l'erreur réapparaît, vérifier que la fonction `remote_size_etag` enveloppe bien l'appel `aws head-object` dans un `if ... fi`.
+- **`MissingContentLength`** : Cellar refuse les bodies en streaming/trailer checksum. La version actuelle de `storage.sh` exporte `AWS_REQUEST_CHECKSUM_CALCULATION=when_required` et `AWS_RESPONSE_CHECKSUM_VALIDATION=when_required` pour ça — vérifier que ces lignes existent.
+- **HTTP 401 / 403 Ark** : clé invalide ou pas d'accès au modèle.
+- **Task `failed` sur Ark** : message d'erreur dans la réponse JSON. Souvent prompt trop long, langue mélangée, ou character asset invalide.
+- **Lipsync clairement décalée** : raffiner les `(small pause)` dans le prompt, ou découper le segment en deux. Si le segment est très court (< 2 s d'audio), la lipsync peut être imprécise par construction du modèle.
+- **Personnage qui ne ressemble pas à l'asset enregistré** : vérifier que le `seedance_asset_id` est valide (testable dans la BytePlus Ark Console) et que la référence visuelle utilisée pour créer l'asset était suffisamment précise.

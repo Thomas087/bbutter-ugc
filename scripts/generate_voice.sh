@@ -22,8 +22,8 @@
 #   1 usage / fichier manquant
 #   2 erreur API ElevenLabs
 #
-# Catalogue des voix disponibles : scripts/voices.json
-# (lister : `jq -r '.voices[] | "\(.id)\t\(.gender)\t\(.age)\t\(.description)"' scripts/voices.json`)
+# Catalogue des personnages : scripts/characters.json (champs elevenlabs_voice_id + seedance_asset_id).
+# (lister : `jq -r '.characters[] | "\(.id)\t\(.gender)\t\(.age)\t\(.description)\t\(.elevenlabs_voice_id)"' scripts/characters.json`)
 
 set -euo pipefail
 export LC_ALL=C
@@ -64,6 +64,15 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 set -a; source "$ROOT/.env"; set +a
 [[ -n "${ELEVENLABS_API_KEY:-}" ]] || { echo "ELEVENLABS_API_KEY missing in .env" >&2; exit 1; }
 
+# Tag prefix (préfixe ajouté à chaque génération si le personnage a un voice_tags dans characters.json)
+TAG=""
+CHARACTERS_JSON="$SCRIPT_DIR/characters.json"
+if [[ -f "$CHARACTERS_JSON" ]]; then
+  TAG=$(jq -r --arg id "$VOICE_ID" \
+    'first(.characters[] | select(.elevenlabs_voice_id == $id) | .voice_tags // empty) // ""' \
+    "$CHARACTERS_JSON")
+fi
+
 # Sortie par défaut : même nom, extension .mp3, à côté du script
 if [[ -z "$OUT" ]]; then
   OUT="${SCRIPT_PATH%.*}.mp3"
@@ -90,12 +99,15 @@ else
 fi
 
 CHARS=${#TEXT}
-echo "voice: $VOICE_ID  model: $MODEL  chars: $CHARS  segments: ${#SECTIONS[@]}"
+echo "voice: $VOICE_ID  model: $MODEL  chars: $CHARS  segments: ${#SECTIONS[@]}${TAG:+  tag: $TAG}"
 
 # ── Helper : appel ElevenLabs ──────────────────────────────────────────────
 tts_call() {
   local text="$1"
   local out="$2"
+  if [[ -n "$TAG" ]]; then
+    text="$TAG $text"
+  fi
   local payload
   payload=$(jq -n --arg t "$text" --arg m "$MODEL" --argjson s "$STABILITY" \
     '{text:$t, model_id:$m, voice_settings:{stability:$s}}')

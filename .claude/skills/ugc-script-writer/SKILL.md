@@ -140,9 +140,23 @@ Structure obligatoire du script :
 Chaque section doit avoir :
 - Un timecode précis (ex : `[0:09 – 0:17]`)
 - Un titre fonctionnel en majuscules (HOOK, RÉVÉLATION, PROBLÈME, PRODUIT 1, PRODUIT 2, PUNCH FINAL + CTA)
-- Une indication de plan caméra en italique (selfie face caméra, gros plan produit, plan armoire de salle de bain, etc.)
+- Une indication de plan caméra en italique : soit `Plan ancre` (créatrice face caméra), soit un insert nommé (ex : `Insert : gros plan produit en main`, `Insert : plan armoire de salle de bain`). Voir la sous-section « Plan ancre et économie des angles » ci-dessous pour les règles de répartition.
 - La voix entre guillemets droits, **avec des tags ElevenLabs intégrés** (voir sous-section dédiée ci-dessous)
 - Un texte à l'écran en code court (`texte ici`)
+
+#### Plan ancre et économie des angles
+
+Limite drastiquement le nombre d'angles caméra. Trop d'angles = vidéo qui ressemble à une pub mal montée. Un vrai UGC repose sur **un seul plan principal** où on voit la créatrice parler, avec quelques inserts ponctuels.
+
+**Règles :**
+
+1. **Le premier segment (HOOK) établit le plan ancre.** Ce plan ancre est obligatoirement celui qui contient la créatrice (typiquement selfie face caméra, smartphone tenu en main, salle de bain ou cuisine en arrière-plan). Jamais de plan produit ni d'environnement vide en ouverture — la première seconde doit montrer un visage humain.
+2. **Le plan ancre est le plan principal de toute la vidéo.** Le script y revient systématiquement entre chaque insert. Cible : **≥60% de la durée totale en plan ancre**, et la créatrice doit y reparaître au moins une fois entre deux inserts consécutifs.
+3. **Maximum 2 angles secondaires** sur l'ensemble du script (1 idéalement). Ces inserts sont **courts (2 à 4 secondes max chacun)** : gros plan produit en main, plan d'application, plan armoire de salle de bain, capture d'écran panier. Pas davantage, et pas de troisième angle même "pour varier".
+4. **Tout segment produit reprend de préférence le plan ancre,** avec le produit tenu en main par la créatrice. L'insert produit isolé n'est utilisé que si une démonstration le justifie (texture, applicateur, dosage).
+5. **Le CTA final est obligatoirement en plan ancre,** créatrice face caméra. Jamais de packshot final — c'est un signal "pub" qui casse l'effet UGC.
+
+Notation dans le script : écris explicitement `Plan ancre` chaque fois que le segment réutilise le plan principal, et nomme l'insert (`Insert : <description courte>`) pour les angles secondaires. Dans les notes de production, rappelle en une ligne le plan ancre retenu et la liste exhaustive des inserts utilisés (ex : « Plan ancre : selfie face caméra dans la salle de bain. Inserts : 1) gros plan tube de crème en main à 0:18, 2) plan armoire à pharmacie à 0:30. »).
 
 #### Tags ElevenLabs dans la voix off
 

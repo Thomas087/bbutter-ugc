@@ -1,0 +1,15 @@
+{
+  "default": "french-farmer-60",
+  "characters": [
+    {
+      "id": "french-farmer-60",
+      "name": "SD French farmer 60",
+      "gender": "male",
+      "age": 60,
+      "description": "Friendly old",
+      "elevenlabs_voice_id": "euWtyQoyFMlHLJAI4sYH",
+      "seedance_asset_id": "asset-20260225022658-zn9dj",
+      "voice_tags": ""
+    }
+  ]
+}

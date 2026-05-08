@@ -1,7 +1,7 @@
 ---
 name: ugc-voice-generator
 description: >-
-  Génère la voix off d'un script UGC Butt Butter (sortie de `ugc-script-writer`) via ElevenLabs, segment par segment, puis accélère chaque segment à 1.2x pour le montage TikTok/Reels/Shorts. Choisit automatiquement la voix dans `scripts/voices.json` en fonction de la persona du script (âge, genre). Produit un dossier `voice_sections/` (originaux) et `voice_sections_1.2x/` (accélérés), plus un tableau des durées segment par segment, indispensable pour caler la durée des plans vidéo. Utilise ce skill dès que l'utilisateur demande "génère les audios", "génère la voix off", "génère les voix", "audio du script", "voix UGC", "TTS du script", ou demande à accélérer / changer la vitesse de la voix d'un script déjà écrit. Utilise-le aussi quand l'utilisateur veut connaître la durée réelle de chaque segment vocal pour ajuster le montage.
+  Génère la voix off d'un script UGC Butt Butter (sortie de `ugc-script-writer`) via ElevenLabs, segment par segment, puis accélère chaque segment à 1.2x pour le montage TikTok/Reels/Shorts. Choisit automatiquement le personnage dans `scripts/characters.json` (champ `elevenlabs_voice_id`) en fonction de la persona du script (âge, genre). Produit un dossier `voice_sections/` (originaux) et `voice_sections_1.2x/` (accélérés), plus un tableau des durées segment par segment, indispensable pour caler la durée des plans vidéo. Utilise ce skill dès que l'utilisateur demande "génère les audios", "génère la voix off", "génère les voix", "audio du script", "voix UGC", "TTS du script", ou demande à accélérer / changer la vitesse de la voix d'un script déjà écrit. Utilise-le aussi quand l'utilisateur veut connaître la durée réelle de chaque segment vocal pour ajuster le montage.
 ---
 
 # UGC Voice Generator — Butt Butter
@@ -18,40 +18,40 @@ Ce skill prend un script UGC Butt Butter (markdown produit par `ugc-script-write
 - **Script source** : chemin vers un `.md` produit par `ugc-script-writer`. Si l'utilisateur ne précise pas, prends le dernier dossier sous `output/` (le plus récent par date) et son `script.md`.
 - **Persona** : à lire dans le tableau d'en-tête du script (ligne `| **Persona** | … |`). Sert à choisir la voix.
 
-## Catalogue de voix
+## Catalogue des personnages
 
-Le catalogue est dans `scripts/voices.json`. Listing rapide :
+Le catalogue est dans `scripts/characters.json` (catalogue partagé avec `ugc-video-seedance` qui en consomme le champ `seedance_asset_id`). Listing rapide :
 
 ```bash
-jq -r '.voices[] | "\(.id)\t\(.gender)\t\(.age)\t\(.description)"' scripts/voices.json
+jq -r '.characters[] | "\(.id)\t\(.gender)\t\(.age)\t\(.description)\t\(.elevenlabs_voice_id)"' scripts/characters.json
 ```
 
-Format : `id`, `gender` (Homme / Femme), `age` (entier), `description`.
+Champs utilisés ici : `id` (slug stable), `gender` (`male` / `female`), `age` (entier), `description`, `elevenlabs_voice_id` (à passer à `--voice`), et optionnellement `voice_tags` (préfixe ajouté automatiquement par `generate_voice.sh`).
 
 ### Règle de sélection automatique
 
 Compare la persona du script aux entrées du catalogue, dans cet ordre de priorité :
 
-1. **Genre** : strictement match. Si la persona est féminine, ne prends pas une voix masculine, même si l'âge colle mieux. (Si aucune voix du bon genre n'existe encore, signale-le à l'utilisateur et propose d'en ajouter une plutôt que de défaut sur le mauvais genre.)
-2. **Âge** : prends la voix dont l'âge est le plus proche (différence absolue minimale).
+1. **Genre** : strictement match. Si la persona est féminine, ne prends pas une voix masculine, même si l'âge colle mieux. (Si aucun personnage du bon genre n'existe encore, signale-le à l'utilisateur et propose d'en ajouter un plutôt que de défaut sur le mauvais genre.)
+2. **Âge** : prends le personnage dont l'âge est le plus proche (différence absolue minimale).
 3. **Description** : départage à description neutre par défaut. Si le script demande un ton particulier (chaleureux, jeune, autoritaire) et qu'une description correspond, privilégie-la.
 
-Annonce ton choix à l'utilisateur en une ligne avec la justification : `Voix choisie : <id> (<gender>, <age> ans, <description>) — match avec la persona <prénom>, <âge> ans.`
+Annonce ton choix à l'utilisateur en une ligne avec la justification : `Personnage choisi : <id> (<gender>, <age> ans, <description>) — match avec la persona <prénom>, <âge> ans. Voix ElevenLabs : <elevenlabs_voice_id>.`
 
-L'utilisateur peut override en passant une voice id explicite (`--voice <id>`) — dans ce cas, ne fais pas de sélection auto.
+L'utilisateur peut override en passant une voice id ElevenLabs explicite (`--voice <id>`) — dans ce cas, ne fais pas de sélection auto.
 
 ## Procédure
 
 ### 1. Pré-vérifications (silencieuses, ne pas commenter sauf erreur)
 
 - `scripts/generate_voice.sh` existe et est exécutable
-- `scripts/voices.json` existe
+- `scripts/characters.json` existe
 - `ffmpeg` est installé (`command -v ffmpeg`) — requis pour le speed-up. Si absent, demande à l'utilisateur de l'installer (`brew install ffmpeg`) et stoppe.
 - Le script source contient bien des lignes `**Voix :** "..."` (`grep -c '^\*\*Voix' <script>`). Sinon, signale-le.
 
-### 2. Choix de la voix
+### 2. Choix du personnage
 
-Lis la persona dans l'en-tête du script. Applique la règle de sélection ci-dessus contre `scripts/voices.json`. Annonce le choix à l'utilisateur en une ligne avant de lancer la génération.
+Lis la persona dans l'en-tête du script. Applique la règle de sélection ci-dessus contre `scripts/characters.json`. Annonce le choix à l'utilisateur en une ligne avant de lancer la génération, et passe le `elevenlabs_voice_id` du personnage retenu à `--voice`.
 
 ### 3. Génération des segments
 
