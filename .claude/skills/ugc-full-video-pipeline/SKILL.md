@@ -313,3 +313,37 @@ segment 4 — FAILED — <message Ark résumé>
 ```
 
 Pas de commentaire gratuit ("génération réussie", "fichiers écrits"). Seulement ce qui est notable ou cassé.
+
+## Override courants
+
+- **Régénérer un seul segment** : `--segments 3` + `--force`. Réutilise le face-mask déjà extrait (s'il existe) ou re-tire l'Étape 4 si l'utilisateur le demande explicitement.
+- **Re-tirer juste le face-mask** (variance API) : si `frames/segment_1/first_frame.png` existe déjà, saute l'Étape 4.1 (extraction ffmpeg) et passe directement à l'Étape 4.3 (appel API). Le PNG `first_frame_face_mask.png` est écrasé. Coût : ~30s.
+- **Forcer un personnage non-catalogue** : si l'utilisateur passe un `seedance_asset_id` explicite (test d'un nouvel asset BytePlus pas encore inscrit dans `characters.json`), saute l'Étape 1 et utilise l'asset fourni.
+- **Variante silencieuse** d'un segment (debug A/B) : passer `--no-generate-audio` à `generate_video_seedance.py`. Pas un mode officiel du skill, à invoquer manuellement.
+- **Segment-only** sans face-mask (test prompt seul) : invoquer directement `ugc-video-seedance` sur ce segment, ne pas passer par ce skill.
+
+## Anti-patterns à éviter
+
+- **Générer les segments en parallèle.** Le pipeline est séquentiel par design : segment 1 doit finir avant le face-mask, et même les segments 2..N restent séquentiels. Ça permet à l'utilisateur d'inspecter chaque lipsync avant de payer le suivant, et ça garde la queue Ark calme. **Pas de `&` ni de `xargs -P` derrière les appels Seedance.**
+- **Réutiliser le face-mask avant qu'il existe.** Segment 1 → face-mask → segments 2..N. Ne tente jamais de lancer le segment 2 en parallèle de l'extraction face-mask.
+- **Attacher le face-mask à un segment insert (non-ancre).** Tue le cadrage close-up que l'insert est censé livrer. Le flag `is_anchor` se vérifie segment par segment, pas une fois pour toutes.
+- **Sauter le `video_prompt.txt` par segment.** Un prompt générique entre segments produit une dérive visible (cadrage, lumière, ton). Chaque segment a son propre prompt, ancré sur sa stage direction et son texte voix.
+- **Défaut sur un personnage approchant.** Si `characters.json` n'a pas de match strict (genre + âge proche), **stoppe**. Ne prends pas le moins pire — la cohérence visuelle entre plans repose sur le match.
+- **Auto-lancer les skills amont.** Ce skill suppose script + lo-fi déjà produits. Ne lance jamais `ugc-script-writer`, `ugc-voice-generator` ou `ugc-voice-lofi` toi-même. Stoppe et pointe.
+- **Passer `--audio` manuellement** depuis le skill. `generate_video_seedance.py` auto-attache `voice_sections_1.2x_lofi/section-NN.mp3`. Le passer à la main risque de pointer vers le mauvais fichier (ex : `voice_sections/` non-accéléré, ou `voice_sections_1.2x/` non-lo-fi).
+
+## Erreurs possibles
+
+- **`script.md` parse 0 segment** : l'en-tête `**[h:mm – h:mm]**` est absent ou mal formé. Vérifie manuellement le script et corrige le format.
+- **Mismatch nombre de segments parsés vs nombre de fichiers `voice_sections_1.2x/section-NN.mp3`** : le script et les voix ne sont pas synchros. Probablement un re-run partiel de `ugc-voice-generator`. Stoppe et demande à l'utilisateur de re-générer les voix.
+- **`ARK_API_KEY not set` / `OPENAI_API_KEY not set`** : ajouter dans `.env` à la racine du repo.
+- **Aucun match persona dans `characters.json`** : suivre l'instruction de l'Étape 1 — enregistrer un nouveau character asset BytePlus puis ajouter la ligne au catalogue.
+- **`storage.sh ... failed (exit 254)`** : version récente d'aws-cli sur HeadObject 404. Le `storage.sh` actuel gère le cas, sinon vérifier que la fonction `remote_size_etag` enveloppe `aws head-object` dans un `if ... fi`.
+- **`MissingContentLength`** : Cellar refuse les bodies en streaming/trailer checksum. Vérifier que `storage.sh` exporte `AWS_REQUEST_CHECKSUM_CALCULATION=when_required` et `AWS_RESPONSE_CHECKSUM_VALIDATION=when_required`.
+- **HTTP 401/403 Ark** : clé invalide ou pas d'accès au modèle Seedance.
+- **Task Ark `failed`** : message d'erreur dans la réponse JSON. Souvent prompt trop long, langue mélangée, ou character asset invalide. Logger, skipper, continuer.
+- **gpt-image-2 403 "must be verified"** : `generate_image.sh` retombe sur gpt-image-1. Mentionner le fallback dans le rapport.
+- **Face-mask semi-transparent / on devine le visage** : bloc "no transparency, no gradient" raccourci, ou `OPENAI_IMAGE_QUALITY` pas en `high`. Re-tirer.
+- **Lipsync clairement décalée sur un segment ancre** : la phrase française exacte n'est pas dans le prompt, ou est paraphrasée en anglais. La remettre telle quelle entre guillemets droits, raffiner les `(small pause)`, ré-générer ce segment seul avec `--segments <N> --force`.
+- **Texte halluciné** (le personnage dit autre chose) : même cause/correction que la lipsync décalée.
+- **Décor visiblement différent entre segment 1 et segment 2** : le face-mask n'a pas été passé en `--image` au segment 2 (vérifier que `is_anchor` est bien `True`), ou Seedance a interprété le character asset au lieu du face-mask comme cadre de réf. Re-tirer le segment 2 avec face-mask explicitement listé en premier `--image`.
