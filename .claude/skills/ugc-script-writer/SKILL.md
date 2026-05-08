@@ -141,8 +141,29 @@ Chaque section doit avoir :
 - Un timecode précis (ex : `[0:09 – 0:17]`)
 - Un titre fonctionnel en majuscules (HOOK, RÉVÉLATION, PROBLÈME, PRODUIT 1, PRODUIT 2, PUNCH FINAL + CTA)
 - Une indication de plan caméra en italique (selfie face caméra, gros plan produit, plan armoire de salle de bain, etc.)
-- La voix entre guillemets droits
+- La voix entre guillemets droits, **avec des tags ElevenLabs intégrés** (voir sous-section dédiée ci-dessous)
 - Un texte à l'écran en code court (`texte ici`)
+
+#### Tags ElevenLabs dans la voix off
+
+Les textes de voix sont destinés à être générés par ElevenLabs. Insère directement dans le texte de chaque réplique des **tags audio entre crochets, en majuscules**, pour piloter la prosodie. Place le tag juste avant le segment qu'il doit colorer, sans espace après le crochet fermant.
+
+Tags utiles (palette restreinte, à choisir au cas par cas) :
+- `[WHISPER]` — confidence, intimité, début vulnérable
+- `[JOKING]` — clin d'œil, second degré, aveu cash
+- `[SERIOUS]` — passage pédagogique, explication produit
+- `[HESITANT]` — aveu, mot un peu tabou qu'on a du mal à sortir
+- `[SIGH]` / `[LAUGH]` — réactions courtes intercalées
+- `[EXCITED]` — bénéfice ressenti, effet "ça change tout"
+- `[CURIOUS]` — question rhétorique au spectateur
+
+Exemple de formatage attendu pour la voix :
+
+> `"[WHISPER]Vous savez quoi. J'ai trois trucs dans ma salle de bain. [JOKING]Et y en a un… j'en parle à personne."`
+
+**Règle de dosage : ne pas surjouer.** Vise **1 à 3 tags maximum sur l'ensemble d'un script court** (pas un par phrase). Le but est de guider la lecture, pas de dramatiser ni de transformer la voix en montagnes russes émotionnelles. Si une réplique se lit naturellement sans tag, n'en mets pas. Évite d'enchaîner deux tags d'humeur opposée dans la même phrase. Laisse en général le **CTA final sans tag** : il doit rester posé et naturel.
+
+Les tags sont à insérer **uniquement dans le champ "Voix"** des sections horodatées, pas dans les textes à l'écran ni dans les notes de production.
 
 Durée totale cible : **30 à 45 secondes, format court uniquement**. Pour 1 produit, vise ~30 secondes. Pour 2 produits, vise ~40-45 secondes. Au-delà de 45 secondes, l'attention décroche en TikTok/Shorts. Ne livre jamais une version longue par défaut, même si l'utilisateur n'a pas explicitement demandé "court" : c'est le mode par défaut du skill.
 

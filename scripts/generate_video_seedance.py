@@ -4,9 +4,12 @@ generate_video_seedance.py — generate one UGC video segment via the BytePlus
 Ark Seedance content-generation API.
 
 Unlike the Kling omni-video flow, Seedance does not need a start/end frame.
-The character look is supplied by a reference asset ID (a "digital character"
-in BytePlus terms) and any in-shot products are passed as additional
-reference images. The model handles motion and lip-sync from the text prompt.
+The character look is supplied by a BytePlus "digital character" asset ID
+(--character-asset-id, sent as asset://). Any other reference images
+(products, decor, etc.) and reference audio are sent as HTTPS URLs — local
+file paths are uploaded to Clever Cloud Cellar via scripts/storage.sh and
+the returned public URL is used in the API payload. Pre-existing https URLs
+are passed through unchanged.
 
 Given a session directory laid out by the upstream UGC pipeline:
     <session>/
@@ -17,19 +20,23 @@ this script:
   1. Reads the accelerated audio duration of the matching voice section to
      pick a Seedance duration (5 or 10 seconds), unless --duration is given.
   2. Builds the content array: prompt text + one reference_image entry per
-     --asset-id (asset:// URI) and per --image-url (https URI).
+     --character-asset-id (asset:// URI) and per --image (https URL — local
+     path uploaded via storage.sh first), plus one reference_audio entry per
+     --audio (same upload-if-local rule).
   3. POSTs to /api/v3/contents/generations/tasks with Bearer auth.
   4. Polls task status until succeeded or failed.
   5. Downloads the generated MP4 to <session>/videos/<output-name>.
 
 Reads ARK_API_KEY from the environment. Source the project .env first
-(`set -a; source .env; set +a`) or export it.
+(`set -a; source .env; set +a`) or export it. Cellar credentials for
+storage.sh are read from the same .env (CELLAR_*).
 
 Usage:
     scripts/generate_video_seedance.py SESSION_DIR SEGMENT_NUM \\
-        --asset-id asset-20260225022658-zn9dj \\
-        [--asset-id ...] [--image-url https://...] \\
-        [--audio-asset-id file-...] [--audio-url https://...] \\
+        --character-asset-id asset-20260225022658-zn9dj \\
+        [--character-asset-id ...] \\
+        [--image path/to/product.png] [--image https://...] \\
+        [--audio path/to/voice.mp3]  [--audio https://...] \\
         [--prompt TEXT] [--duration 5|10] [--ratio adaptive|16:9|9:16|1:1] \\
         [--model dreamina-seedance-2-0-260128] [--generate-audio] [--no-watermark] \\
         [--output-name segment_1_seedance.mp4]
@@ -55,6 +62,8 @@ from pathlib import Path
 ARK_BASE = "https://ark.ap-southeast.bytepluses.com/api/v3"
 TASKS_PATH = "/contents/generations/tasks"
 DEFAULT_MODEL = "dreamina-seedance-2-0-260128"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+STORAGE_SH = REPO_ROOT / "scripts" / "storage.sh"
 DEFAULT_PROMPT = (
     "Fixed front-camera selfie framing, vertical 9:16, iPhone UGC look. "
     "The character holds the phone at arm's length and speaks directly into "
@@ -64,6 +73,36 @@ DEFAULT_PROMPT = (
     "Realistic, imperfect UGC — not glossy, not cinematic. Absolutely no text, "
     "no captions, no subtitles, no watermarks visible in the image."
 )
+
+
+def upload_to_cellar(path: Path) -> str:
+    if not STORAGE_SH.exists():
+        raise SystemExit(f"storage.sh not found at {STORAGE_SH}")
+    try:
+        out = subprocess.check_output(
+            [str(STORAGE_SH), "put", str(path)],
+            text=True,
+            stderr=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError as e:
+        raise SystemExit(
+            f"storage.sh put {path} failed (exit {e.returncode}):\n{e.stderr}"
+        )
+    url = out.strip().splitlines()[-1] if out.strip() else ""
+    if not url.startswith("http"):
+        raise SystemExit(f"storage.sh did not return a URL for {path}: {out!r}")
+    return url
+
+
+def to_https_url(value: str) -> str:
+    """Pass-through for https:// URLs; otherwise treat as a local path and
+    upload via storage.sh, returning the public Cellar URL."""
+    if value.startswith("https://") or value.startswith("http://"):
+        return value
+    p = Path(value)
+    if not p.exists():
+        raise SystemExit(f"file not found: {value}")
+    return upload_to_cellar(p)
 
 
 def audio_duration_seconds(path: Path) -> float:
@@ -135,30 +174,27 @@ def main() -> int:
     ap.add_argument("session_dir", type=Path)
     ap.add_argument("segment_num", type=int)
     ap.add_argument(
-        "--asset-id",
+        "--character-asset-id",
         action="append",
         default=[],
-        help="Reference asset ID (e.g. character or product). May be repeated. "
-        "Passed to the API as asset://<id> with role=reference_image.",
+        help="BytePlus digital-character asset ID. May be repeated. "
+        "Sent to the API as asset://<id> with role=reference_image.",
     )
     ap.add_argument(
-        "--image-url",
+        "--image",
         action="append",
         default=[],
-        help="HTTPS reference image URL. May be repeated. Passed with role=reference_image.",
+        help="Reference image: https URL (passthrough) OR local path "
+        "(uploaded to Clever Cellar via scripts/storage.sh, public URL "
+        "used in the API payload). May be repeated. role=reference_image.",
     )
     ap.add_argument(
-        "--audio-asset-id",
+        "--audio",
         action="append",
         default=[],
-        help="Reference audio asset/file ID (e.g. uploaded mp3). May be repeated. "
-        "Passed to the API as asset://<id> with role=reference_audio.",
-    )
-    ap.add_argument(
-        "--audio-url",
-        action="append",
-        default=[],
-        help="HTTPS reference audio URL. May be repeated. Passed with role=reference_audio.",
+        help="Reference audio: https URL (passthrough) OR local path "
+        "(uploaded to Clever Cellar via scripts/storage.sh, public URL "
+        "used in the API payload). May be repeated. role=reference_audio.",
     )
     ap.add_argument("--prompt", type=str, default=None)
     ap.add_argument("--duration", type=int, choices=[5, 10], default=None)
@@ -215,7 +251,7 @@ def main() -> int:
             prompt = DEFAULT_PROMPT
 
     content: list[dict] = [{"type": "text", "text": prompt}]
-    for aid in args.asset_id:
+    for aid in args.character_asset_id:
         content.append(
             {
                 "type": "image_url",
@@ -223,7 +259,8 @@ def main() -> int:
                 "role": "reference_image",
             }
         )
-    for url in args.image_url:
+    image_urls = [to_https_url(v) for v in args.image]
+    for url in image_urls:
         content.append(
             {
                 "type": "image_url",
@@ -231,15 +268,8 @@ def main() -> int:
                 "role": "reference_image",
             }
         )
-    for aid in args.audio_asset_id:
-        content.append(
-            {
-                "type": "audio_url",
-                "audio_url": {"url": f"asset://{aid}"},
-                "role": "reference_audio",
-            }
-        )
-    for url in args.audio_url:
+    audio_urls = [to_https_url(v) for v in args.audio]
+    for url in audio_urls:
         content.append(
             {
                 "type": "audio_url",
@@ -260,8 +290,8 @@ def main() -> int:
     print(
         f"[segment {n}] model={args.model} audio={audio_sec:.2f}s "
         f"duration={duration}s ratio={args.ratio} "
-        f"refs={len(args.asset_id)} image-assets + {len(args.image_url)} image-urls + "
-        f"{len(args.audio_asset_id)} audio-assets + {len(args.audio_url)} audio-urls",
+        f"refs={len(args.character_asset_id)} character-assets + "
+        f"{len(image_urls)} image-urls + {len(audio_urls)} audio-urls",
         file=sys.stderr,
     )
 
