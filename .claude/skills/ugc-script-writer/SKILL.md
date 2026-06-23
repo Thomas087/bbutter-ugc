@@ -1,69 +1,46 @@
 ---
 name: ugc-script-writer
 description: >-
-  Créateur de scripts vidéo UGC pour Butt Butter (buttbutter.fr), au format court (TikTok, Reels, Shorts, environ 30 à 45 secondes). Suit un processus séquentiel en 4 étapes. Étape 1, génération de 10 hooks ton cash et 10 hooks ton sérieux puis choix du hook. Étape 2, proposition de la gamme complète Butt Butter et choix des produits à mettre en scène. Étape 3, proposition de 6 personas (âge, genre, profil) et choix d'une persona avant la rédaction du script. Étape 4, script complet, unique version courte, avec timecodes, plans caméra, voix, textes à l'écran, déjà aligné sur les produits et la persona retenus, et explication vulgarisée du mécanisme d'action (transit, circulation) intégrée en format court. Le skill ne propose qu'une seule version du script (pas de version longue). Utilise ce skill dès que l'utilisateur mentionne "vidéo UGC", "script UGC", "vidéo TikTok", "vidéo Reel", "vidéo Shorts", "hook vidéo Butt Butter", "campagne UGC", "créatrice UGC", "brief vidéo" pour Butt Butter, ou demande des hooks pour une vidéo promo. Utilise-le aussi quand l'utilisateur veut transformer un produit Butt Butter en format vidéo court ou demande comment le mettre en scène.
+  Créateur de scripts vidéo UGC pour Butt Butter (buttbutter.fr), format vertical court (TikTok, Reels, Shorts). Utilise dès que l'utilisateur mentionne "vidéo UGC", "script UGC", "vidéo TikTok / Reel / Shorts", "hook UGC", "campagne UGC", "créatrice UGC", "brief vidéo Butt Butter", ou demande des hooks / une mise en scène vidéo pour un produit Butt Butter.
 ---
 
 # UGC Script Writer — Butt Butter
 
-Ce skill produit des scripts vidéo UGC pour Butt Butter (marque française de solutions pour hémorroïdes : crème apaisante, complément alimentaire, etc.). Format cible : TikTok, Reels, Shorts, vertical 9:16, durée 30 à 45 secondes — version courte uniquement, pas de variante longue.
+Produit des scripts vidéo UGC pour Butt Butter (marque française de solutions pour hémorroïdes : crème apaisante, complément alimentaire, etc.), format vertical 9:16 pour TikTok / Reels / Shorts.
 
 ## Principe directeur
 
-Un bon UGC ne ressemble pas à une pub. Le script doit donner l'impression qu'une vraie personne a sorti son téléphone parce qu'elle avait quelque chose à dire. C'est plus efficace qu'une mise en scène publicitaire, surtout sur un sujet intime comme les hémorroïdes où la confiance se construit par la vulnérabilité, pas par le branding.
+Un bon UGC ne ressemble pas à une pub : c'est une vraie personne qui sort son téléphone parce qu'elle a quelque chose à dire. Sur un sujet intime comme les hémorroïdes, la confiance se construit par la vulnérabilité, pas par le branding. Pas de slogan, pas de musique de pub, pas de voix qui surjoue.
 
-Les meilleurs scripts UGC pour Butt Butter combinent : une phrase d'accroche qui scrolle-stop, un mini-récit personnel, une explication claire du produit, et un CTA discret. Pas de slogan, pas de musique de pub, pas de voix qui surjoue.
+## Contraintes de format
 
-## Processus en 4 étapes
+- **Une seule version livrée**, jamais "courte vs longue". Si l'utilisateur en demande une autre après coup, OK — mais pas par défaut.
+- **Durée totale ≤ 120 s, cible 45-60 s** (~30 s pour 1 produit, ~40-45 s pour 2 produits). Ne pousse vers 90-120 s que si le contenu (témoignage long, démo, persona narrative) le justifie vraiment.
+- **Aucun segment > 15 s.** Plans ancre typiques 4-10 s, inserts 2-6 s. Au-delà, découpe en deux segments avec saut de cadrage.
 
-Suis ces étapes dans l'ordre, mais reste flexible : l'utilisateur peut demander à sauter directement à une étape précise (ex : "j'ai mon hook, ma gamme et ma persona, écris-moi le script") ou à itérer plusieurs fois sur la même étape. Si une étape est déjà couverte par les messages précédents, ne la refais pas.
+## Processus en 4 étapes — points d'arrêt obligatoires
 
-L'enchaînement : (1) hooks → choix utilisateur → (2) produits → choix utilisateur → (3) persona → choix utilisateur → (4) script complet, unique version courte, livré tel quel.
+Enchaînement : (1) persona → (2) produits → (3) hooks → (4) script complet.
 
-**Une seule version du script.** Le skill produit toujours une **unique version courte** du script (~30 à 45 secondes), pas de variante longue, pas de double-livraison "courte vs longue". Si l'utilisateur demande explicitement une version plus longue après coup, tu peux la produire en réponse à cette demande, mais ce n'est pas le mode par défaut.
+Les étapes 1-3 demandent un choix utilisateur. **N'enchaîne jamais plusieurs étapes dans un seul tour.** À la fin de chaque étape qui demande un choix, termine par une question explicite et attends la réponse. Ne choisis jamais à la place de l'utilisateur. L'étape 4 livre directement le script final, sans question.
 
-### Règle critique — Points d'arrêt obligatoires
+**Exception** : si l'utilisateur a déjà fait ses choix dans son message initial (persona + produits + hook), saute directement à l'étape correspondante.
 
-Ce skill repose sur des choix faits par l'utilisateur, pas par toi. **N'enchaîne jamais plusieurs étapes dans un seul tour.** Tu dois marquer un arrêt complet à la fin de chaque étape qui demande un choix utilisateur, et attendre sa réponse avant de continuer.
+### Étape 1 — Persona
 
-Trois arrêts obligatoires :
+Source obligatoire : `scripts/characters.json`. **Ne propose qu'une persona présente dans ce fichier.** Chaque entrée `characters[]` est un personnage que la pipeline aval peut effectivement produire (champs `id`, `name`, `gender`, `age`, `description`, `elevenlabs_voice_id`, `seedance_asset_id`). Toute persona inventée est inutilisable en aval.
 
-1. **Après l'étape 1 (hooks)** : tu livres les hooks numérotés et tu t'arrêtes. Ne choisis jamais un hook à la place de l'utilisateur. Ne passes pas à l'étape suivante avant qu'un numéro soit indiqué.
-2. **Après l'étape 2 (choix des produits)** : tu listes la gamme Butt Butter et tu t'arrêtes. Ne sélectionnes jamais les produits à la place de l'utilisateur. N'écris pas le script tant que les produits ne sont pas confirmés.
-3. **Après l'étape 3 (choix de persona)** : tu livres les 6 personas avec ta recommandation, et tu t'arrêtes. Ne lances pas le script complet avant qu'une persona soit explicitement choisie.
+Procédure :
+1. Lis `scripts/characters.json`. S'il est absent ou vide, signale-le et demande à l'utilisateur d'ajouter un personnage avant de continuer.
+2. Construis la liste exclusivement à partir des entrées du fichier. Pour chaque option : nom clarifié (à partir de `name`), âge + genre, 1-2 phrases de profil (à partir de `description`), pourquoi crédible sur le sujet (facteur déclenchant : grossesse, sédentarité, sport, âge…), ton dominant attendu, environnement de tournage, et l'`id` entre parenthèses (ex : `(id : french-farmer-60)`).
+3. Classe par alignement décroissant avec l'audience cible Butt Butter. Limite à 6 max si le fichier en contient beaucoup.
+4. Termine par **une recommandation personnelle** justifiée (volume d'audience, défensabilité légale, différenciation).
 
-Ta dernière phrase de chaque étape qui demande un choix doit toujours être une question explicite ou une invitation à choisir. Exemples : "Quel hook veux-tu développer ?", "Quels produits veux-tu mettre en scène ?", "Quelle persona veux-tu retenir ?"
+**Clôture :** « Quelle persona veux-tu retenir pour le script ? »
 
-À l'étape 4, tu livres directement le script final. Pas de question à poser, pas de variante à choisir.
+### Étape 2 — Produits à mettre en scène
 
-L'unique exception aux arrêts : si l'utilisateur a déjà fait ses choix dans son message initial (ex : "écris-moi un script avec le hook 'POV t'as 28 ans…', la crème apaisante seule et la persona jeune maman post-partum"), tu peux enchaîner directement vers l'étape correspondante sans repasser par les étapes précédentes.
-
-### Étape 1 — Génération des hooks
-
-Quand l'utilisateur demande des "hooks UGC", "idées de hooks", "phrases d'accroche", commence par produire **10 hooks cash/humoristiques**.
-
-Code de tonalité pour ces 10 premiers hooks :
-- Direct, vécu, parfois un peu cru
-- Formats efficaces : "POV : …", "Si toi aussi…", "Personne en parle mais…", "Truc bizarre que personne ose dire…", "Y a 3 produits dans ma salle de bain dont…"
-- Vulnérabilité assumée, jamais de moralisation
-- Évoquer le terme "hémorroïdes" au moins une fois dans la vidéo
-
-Si l'utilisateur en demande "plus", "d'autres", "plus sérieux", produis **10 hooks supplémentaires** sur un registre différent :
-- Témoignage posé, pédagogique, informationnel
-- Formats efficaces : "Pendant X années, j'ai cru que…", "Ce que mon médecin m'a dit…", "8 Français sur 10 auront…", "Ce que j'aurais aimé savoir avant…"
-- Cible un public 35+ qui n'accroche pas sur l'humour cash
-
-Numérote les hooks (1 à 10, puis 11 à 20 si extension). À la fin, propose à l'utilisateur de choisir un hook par son numéro pour passer à l'étape 2, ou de demander d'autres angles (post-partum, sport, sénior, étudiants, hommes 40+, etc.).
-
-**Arrêt obligatoire ici.** Termine ton message par une question explicite du type "Quel hook veux-tu développer ?" et attends la réponse. Ne choisis jamais un hook à la place de l'utilisateur.
-
-### Étape 2 — Choix des produits à mettre en scène
-
-Une fois le hook choisi, et **avant** de lancer la rédaction du script, **propose la liste complète de la gamme Butt Butter** et demande à l'utilisateur lesquels il veut voir apparaître dans la vidéo.
-
-Lis `brand/products/catalog.yaml` pour disposer de la liste à jour. Présente-la regroupée en deux blocs (produits unitaires vs packs), avec le nom commercial complet (ex : "La Crème Apaisante", "Le Complément Circulation & Transit", "Le Probiotique", "Le Soin Lavant Hygiène Intime", puis les packs). Numérote chaque option pour permettre une sélection rapide ("1, 3" ou "le pack circulation transit & apaisement").
-
-Format suggéré :
+Lis `brand/products/catalog.yaml`. Présente la gamme regroupée en deux blocs numérotés (produits unitaires / packs), avec le nom commercial complet :
 
 ```
 **Produits unitaires**
@@ -78,198 +55,217 @@ Format suggéré :
 … (continuer avec les packs du catalogue)
 ```
 
-Indique aussi qu'il est possible de choisir **plusieurs produits** (1 à 2 maximum recommandés pour tenir dans 45 secondes au format court), et donne brièvement le pairing le plus courant (crème + complément circulation/transit) en suggestion par défaut, sans le choisir à la place de l'utilisateur.
+Précise qu'on peut en choisir plusieurs (**1 à 2 max** pour tenir dans 45-60 s). Suggère le pairing par défaut (crème + complément circulation/transit), adapté éventuellement à la persona, **sans choisir à la place de l'utilisateur**.
 
-**Arrêt obligatoire ici.** Termine ton message par "Quels produits veux-tu mettre en scène ?" et attends la réponse. Ne passe pas à la persona ou au script avant que la sélection soit explicite.
+**Clôture :** « Quels produits veux-tu mettre en scène ? »
 
-### Étape 3 — Choix de la persona
+### Étape 3 — Hooks
 
-Une fois les produits sélectionnés, **avant** d'écrire le script, **propose 6 personas** classés du plus aligné avec le hook + la gamme retenue au plus éloigné. Pour chaque persona, donne :
+Produis **10 hooks cash/humoristiques** alignés sur la persona et les produits retenus.
 
-- **Nom du persona** (ex : "Jeune maman post-partum")
-- **Âge précis** + **genre**
-- **Profil** : 1-2 phrases sur le style de vie, le look, l'environnement de tournage
-- **Pourquoi ce persona est crédible** sur le sujet (lien avec le facteur déclenchant : grossesse, sédentarité, sport, âge, etc.)
-- **Inflexion attendue sur le script** : ton dominant (vulnérable, posé, énergique), accessoires-clés, environnement de tournage
+Tonalité :
+- Direct, vécu, parfois cru. Vulnérabilité assumée, jamais de moralisation.
+- Formats efficaces : "POV : …", "Si toi aussi…", "Personne en parle mais…", "Truc bizarre que personne ose dire…", "Y a 3 produits dans ma salle de bain dont…"
+- Le terme "hémorroïdes" doit apparaître au moins une fois dans la vidéo (pas obligatoirement dans le hook).
 
-Les 6 personas par défaut à proposer (adapter selon le hook et les produits choisis) :
-1. **Jeune maman post-partum** (25-32, femme) — facteur déclenchant : grossesse
-2. **Active sédentaire** (35-45, femme cadre/indé) — facteur déclenchant : 9h assise/jour, télétravail
-3. **Homme sportif** (30-40, cycliste/crossfit/musculation) — facteur déclenchant : pression abdominale, frottement
-4. **Quarantenaire pragmatique** (40-50, parent, homme ou femme) — ton plus posé, "je vous explique"
-5. **Senior actif** (55-65, retraité ou fin de carrière) — pic de prévalence (jusqu'à 50% après 50 ans)
-6. **Jeune adulte** (22-28, étudiant/jeune actif) — casser le tabou "c'est un truc de vieux"
+Si l'utilisateur en demande "plus", "d'autres", "plus sérieux", produis **10 hooks supplémentaires** registre témoignage posé / pédagogique : "Pendant X années, j'ai cru que…", "Ce que mon médecin m'a dit…", "8 Français sur 10 auront…", "Ce que j'aurais aimé savoir avant…". Cible un public 35+ qui n'accroche pas sur l'humour cash.
 
-Termine par une **recommandation personnelle** sur la persona à tester en premier, avec justification (volume d'audience cible, alignement produit-message, défensabilité légale, opportunité de différenciation).
+Numérote (1-10 puis 11-20 si extension).
 
-**Arrêt obligatoire ici.** Termine ton message par "Quelle persona veux-tu retenir pour le script ?" et attends la réponse. Ne lance jamais l'écriture du script complet avant qu'une persona soit explicitement choisie.
+**Clôture :** « Quel hook veux-tu développer ? »
 
-### Étape 4 — Développement du script complet
+### Étape 4 — Script complet
 
-Une fois le hook, les produits **et** la persona arrêtés, écris le script complet en intégrant directement la persona (pas de phase de "réécriture finale" séparée).
-
-Structure obligatoire du script :
+Structure obligatoire :
 
 ```
-**Titre :** "[nom court accrocheur, 1-3 mots]"
+**Titre :** "[nom court, 1-3 mots]"
 **Format :** vertical 9:16
 **Durée :** ~XX secondes
-**Persona :** [Nom du persona retenu en étape 3 + une ligne sur le profil, l'âge, le genre, l'environnement de tournage]
+**Persona :** [nom + profil : âge, genre, environnement, plan ancre 1 (et plan ancre 2 si utilisé), tenue]
+**Hook source :** [hook retenu]
 
 ---
 
 **[0:00 – 0:03] — HOOK**
 
-*Plan : [direction caméra]*
+*Plan ancre 1*
 
-**Voix :** "[texte exact]"
+**Voix :** "[texte exact entre guillemets droits, avec tags ElevenLabs au besoin]"
 
 *Texte à l'écran :* `texte court overlay`
 
 ---
 
-[répéter pour chaque section : RÉVÉLATION, PROBLÈME, PRODUIT 1, PRODUIT 2, PUNCH/CTA]
+[répéter pour chaque section : RÉVÉLATION, PROBLÈME, PRODUIT 1, PRODUIT 2, PUNCH + CTA]
 
 ---
 
 **Notes de production**
 
-[paragraphe sur le rythme, les pièges, les claims à valider]
+[rythme attendu (lent et vulnérable au début, plus énergique sur les bénéfices, posé sur le CTA), claims chiffrés à valider légalement, alternative si formule produit diffère, récap plans ancre + inserts utilisés]
 ```
 
-Chaque section doit avoir :
-- Un timecode précis (ex : `[0:09 – 0:17]`)
-- Un titre fonctionnel en majuscules (HOOK, RÉVÉLATION, PROBLÈME, PRODUIT 1, PRODUIT 2, PUNCH FINAL + CTA)
-- Une indication de plan caméra en italique : soit `Plan ancre` (créatrice face caméra), soit un insert nommé (ex : `Insert : gros plan produit en main`, `Insert : plan armoire de salle de bain`). Voir la sous-section « Plan ancre et économie des angles » ci-dessous pour les règles de répartition.
-- La voix entre guillemets droits, **avec des tags ElevenLabs intégrés** (voir sous-section dédiée ci-dessous)
-- Un texte à l'écran en code court (`texte ici`)
+Chaque segment porte :
+- Un timecode dans l'en-tête `**[h:mm – h:mm] — TITRE**`.
+- Une indication de cadrage en italique : `Plan ancre 1`, `Plan ancre 2`, ou `Insert : <description courte>`.
+- Le texte voix dans `**Voix :**` entre **guillemets droits** (les guillemets typographiques cassent la pipeline aval).
+- Un texte à l'écran en code court.
 
-#### Plan ancre et économie des angles
+#### Plan ancre — règles de cadrage
 
-Limite drastiquement le nombre d'angles caméra. Trop d'angles = vidéo qui ressemble à une pub mal montée. Un vrai UGC repose sur **un seul plan principal** où on voit la créatrice parler, avec quelques inserts ponctuels.
+Limite drastiquement le nombre d'angles. Trop d'angles = pub mal montée. Un vrai UGC repose sur **un seul plan principal** où on voit la créatrice parler, avec quelques inserts ponctuels.
 
-**Règles :**
+- **Plan ancre = POV front-camera.** La créatrice tient son téléphone, on voit ce que la caméra frontale capte. Le téléphone n'est **jamais visible dans le cadre** : pas de mirror-selfie, pas de "personne qui filme la créatrice", pas de main-tenant-un-téléphone à l'écran, pas de dos d'iPhone, pas de reflet du téléphone.
+- **Frame 1 du segment 1 = visage humain.** Pas de produit (ni en main, ni en arrière-plan, ni en insert), pas de packaging, pas de plan vide ou d'environnement. Le produit apparaît plus tard dans son segment dédié.
+- **Plan ancre = squelette principal.** Cible ≥60% de la durée totale en plan ancre (1 + 2 cumulés). La créatrice reparaît au moins une fois entre deux inserts consécutifs.
+- **Max 2 angles secondaires** (1 idéalement) sur tout le script. Inserts plafonnés à 15 s chacun (idéalement 2-6 s, jusqu'à 15 s si démo produit ou témoignage à l'écran le justifie). Exemples valides : gros plan produit en main, plan d'application, plan armoire de salle de bain, capture d'écran panier. Pas de 3e angle.
+- **Segments produit : de préférence en plan ancre**, produit tenu en main. L'insert produit isolé est réservé aux démos (texture, applicateur, dosage).
+- **CTA final obligatoirement en plan ancre** (`Plan ancre 1` ou `Plan ancre 2`). **Pas de packshot final** — signal "pub" qui casse l'effet UGC.
 
-1. **Le premier segment (HOOK) établit le plan ancre.** Ce plan ancre est obligatoirement celui qui contient la créatrice (typiquement selfie face caméra, smartphone tenu en main, salle de bain ou cuisine en arrière-plan). Jamais de plan produit ni d'environnement vide en ouverture — la première seconde doit montrer un visage humain.
-2. **Le plan ancre est le plan principal de toute la vidéo.** Le script y revient systématiquement entre chaque insert. Cible : **≥60% de la durée totale en plan ancre**, et la créatrice doit y reparaître au moins une fois entre deux inserts consécutifs.
-3. **Maximum 2 angles secondaires** sur l'ensemble du script (1 idéalement). Ces inserts sont **courts (2 à 4 secondes max chacun)** : gros plan produit en main, plan d'application, plan armoire de salle de bain, capture d'écran panier. Pas davantage, et pas de troisième angle même "pour varier".
-4. **Tout segment produit reprend de préférence le plan ancre,** avec le produit tenu en main par la créatrice. L'insert produit isolé n'est utilisé que si une démonstration le justifie (texture, applicateur, dosage).
-5. **Le CTA final est obligatoirement en plan ancre,** créatrice face caméra. Jamais de packshot final — c'est un signal "pub" qui casse l'effet UGC.
+#### Pas de miroir ni surface réfléchissante — règle non négociable
 
-Notation dans le script : écris explicitement `Plan ancre` chaque fois que le segment réutilise le plan principal, et nomme l'insert (`Insert : <description courte>`) pour les angles secondaires. Dans les notes de production, rappelle en une ligne le plan ancre retenu et la liste exhaustive des inserts utilisés (ex : « Plan ancre : selfie face caméra dans la salle de bain. Inserts : 1) gros plan tube de crème en main à 0:18, 2) plan armoire à pharmacie à 0:30. »).
+**Interdit dans tous les plans** (ancres comme inserts) : miroirs (salle de bain, poche), vitres réfléchissantes, écrans noirs/éteints, surfaces métalliques polies (robinetterie chromée en gros plan, plateau argenté, casseroles), verres remplis d'eau au premier plan, lunettes de soleil portées, baies vitrées renvoyant un reflet, carrelage brillant filmé en contre-jour.
+
+Raison : la pipeline Seedance produit des reflets incohérents (visage qui ne matche pas, objet qui apparaît/disparaît, main fantôme) et — pire — toute mention même indirecte d'un miroir bascule le rendu vers un "mirror-selfie" avec dos d'iPhone visible. Incident documenté : segment 1 de `output/2026-05-12-le-mot-interdit/`.
+
+Préfère un arrière-plan mat (mur peint, faïence mate, carrelage mat, tissu, bois). Pour une salle de bain, cadre délibérément hors miroir (créatrice dos au lavabo, ou champ resserré visage + mur). Si la persona reste crédible dans un autre décor (cuisine, bureau, chambre, salon), privilégie-le : le mot "salle de bain" biaise déjà la pipeline vers le mirror-selfie.
+
+#### Plan ancre 2 (optionnel)
+
+Casse la monotonie visuelle vers la fin :
+- **Apparaît dans le dernier tiers seulement** (jamais avant ~60% de la durée totale). Porte typiquement le CTA final ou un dernier témoignage, pas un nouveau récit.
+- **Environnement complètement différent** de `Plan ancre 1`. Jamais deux salles de bain, deux cuisines, deux salons ni deux chambres différents — un seul changement franc de pièce/contexte.
+- **Même créatrice, même tenue** (ou tenue cohérente — c'est la même journée).
+- Hérite de toutes les règles plan ancre + miroir ci-dessus.
+- **Max un seul Plan ancre 2** par script. Pas de `Plan ancre 3`.
+
+#### Notation
+
+Écris explicitement `Plan ancre 1` (l'alias `Plan ancre` sans numéro reste accepté et désigne le premier plan), `Plan ancre 2` pour les segments du second plan ancre, et `Insert : <description courte>` pour les angles secondaires.
+
+Dans les notes de production, récapitule en une ligne : décors de chaque plan ancre, liste exhaustive des inserts avec timecodes, et rappel "frame 1 sans produit, aucun miroir, POV front-camera téléphone hors cadre".
 
 #### Tags ElevenLabs dans la voix off
 
-Les textes de voix sont destinés à être générés par ElevenLabs. Insère directement dans le texte de chaque réplique des **tags audio entre crochets, en majuscules**, pour piloter la prosodie. Place le tag juste avant le segment qu'il doit colorer, sans espace après le crochet fermant.
+Les textes voix sont générés par ElevenLabs. Insère des tags entre crochets en majuscules, placés juste avant le segment qu'ils colorent, sans espace après le crochet fermant.
 
-Tags utiles (palette restreinte, à choisir au cas par cas) :
+Palette :
 - `[WHISPER]` — confidence, intimité, début vulnérable
 - `[JOKING]` — clin d'œil, second degré, aveu cash
 - `[SERIOUS]` — passage pédagogique, explication produit
-- `[HESITANT]` — aveu, mot un peu tabou qu'on a du mal à sortir
+- `[HESITANT]` — aveu, mot tabou qu'on a du mal à sortir
 - `[SIGH]` / `[LAUGH]` — réactions courtes intercalées
 - `[EXCITED]` — bénéfice ressenti, effet "ça change tout"
 - `[CURIOUS]` — question rhétorique au spectateur
 
-Exemple de formatage attendu pour la voix :
+Exemple :
 
 > `"[WHISPER]Vous savez quoi. J'ai trois trucs dans ma salle de bain. [JOKING]Et y en a un… j'en parle à personne."`
 
-**Règle de dosage : ne pas surjouer.** Vise **1 à 3 tags maximum sur l'ensemble d'un script court** (pas un par phrase). Le but est de guider la lecture, pas de dramatiser ni de transformer la voix en montagnes russes émotionnelles. Si une réplique se lit naturellement sans tag, n'en mets pas. Évite d'enchaîner deux tags d'humeur opposée dans la même phrase. Laisse en général le **CTA final sans tag** : il doit rester posé et naturel.
-
-Les tags sont à insérer **uniquement dans le champ "Voix"** des sections horodatées, pas dans les textes à l'écran ni dans les notes de production.
-
-Durée totale cible : **30 à 45 secondes, format court uniquement**. Pour 1 produit, vise ~30 secondes. Pour 2 produits, vise ~40-45 secondes. Au-delà de 45 secondes, l'attention décroche en TikTok/Shorts. Ne livre jamais une version longue par défaut, même si l'utilisateur n'a pas explicitement demandé "court" : c'est le mode par défaut du skill.
-
-Termine toujours par un bloc "Notes de production" qui pointe :
-- Le rythme attendu (lent et vulnérable au début, plus énergique sur les bénéfices, posé sur le CTA)
-- Les claims chiffrés à faire valider légalement
-- Toute alternative possible si la formule réelle du produit diffère
+**Dosage : 1 à 3 tags max sur tout le script** (pas un par phrase). N'enchaîne pas deux tags d'humeur opposée dans la même phrase. **Laisse le CTA final sans tag** — posé et naturel. Tags **uniquement dans `**Voix :**`**, jamais dans les textes à l'écran ni les notes.
 
 #### Section produit — explication courte du mécanisme
 
-Si la vidéo inclut le complément alimentaire, le probiotique (ou tout produit dont l'effet n'est pas évident visuellement), intègre directement **une seule version courte** (~10-12 secondes) de la section produit dans le script. Pas de proposition courte/longue, pas de choix à faire faire à l'utilisateur.
+Si la vidéo inclut le complément alimentaire ou le probiotique (effet pas évident visuellement), intègre **une seule version courte** (~10-12 s) dans le script :
+- 2 mécanismes max, formulation simple, métaphores concrètes du quotidien ("ramollir", "dégonfler", "veines gonflées", "cercle vicieux", "stagne").
+- Pas de noms d'actifs en latin dans la voix (pas de "diosmine", "marron d'Inde", "vigne rouge").
+- Pas de pourcentages d'efficacité non sourcés.
 
-Caractéristiques de la version courte (la seule à utiliser) :
-- 2 mécanismes maximum, formulation simple, métaphores concrètes
-- Langage UGC : pas de noms d'actifs en latin (pas de "diosmine", "marron d'Inde", "vigne rouge" dans la voix)
-- Pas de pourcentages d'efficacité non sourcés
-- Métaphores du quotidien ("ramollir", "dégonfler", "veines gonflées", "cercle vicieux", "stagne")
-
-Pour le complément Butt Butter, les deux mécanismes principaux à mentionner sont :
+Mécanismes Butt Butter à mentionner :
 - **Transit** : fibres qui ramollissent les selles → moins d'effort de poussée, moins d'irritation. Punchline type : "tu pousses moins, et 80% du problème c'est ça".
-- **Circulation** : extraits veinotoniques qui aident les veines à se dégonfler de l'intérieur. Punchline type : "les hémorroïdes c'est des veines gonflées, les plantes dedans aident à les dégonfler de l'intérieur".
+- **Circulation** : extraits veinotoniques qui aident les veines à dégonfler de l'intérieur. Punchline type : "les hémorroïdes c'est des veines gonflées, les plantes dedans aident à les dégonfler de l'intérieur".
 
-Si la formule réelle diffère (ex : actifs anti-inflammatoires plutôt que veinotoniques), ajuste la métaphore en conséquence et signale-le dans les notes de production.
+Si la formule réelle diffère (ex : actifs anti-inflammatoires plutôt que veinotoniques), adapte la métaphore et signale-le dans les notes.
 
-Le script livré à cette étape est le script **final**. Il doit pouvoir être envoyé tel quel à une créatrice. N'introduis pas de variante alternative ou de version longue, sauf si l'utilisateur en fait explicitement la demande dans un message ultérieur.
+#### Livraison
 
-#### Enregistrement obligatoire du script final
+À la fin de l'étape 4 :
+1. Livre le script en Markdown directement dans le chat.
+2. **Enregistre-le dans `output/YYYY-MM-DD-<slug-titre>/script.md`** (date du jour, titre en kebab-case sans accents ni ponctuation : "Le 3ᵉ truc" → `le-3eme-truc`, "POV ma routine post-partum" → `pov-ma-routine-post-partum`). Le contenu du fichier est identique au script livré dans le chat.
+3. Mentionne le chemin en une ligne (ex : "Script enregistré dans `output/2026-05-13-le-3eme-truc/script.md`.").
 
-À la fin de l'étape 4, **enregistre systématiquement le script final** dans un fichier Markdown à la racine du projet, dans un sous-dossier `output/` dédié à ce script. Ce n'est pas optionnel.
+Si l'utilisateur ré-itère ensuite (modification du hook, persona, timing), **réécris le même fichier**. Crée un nouveau dossier `…-v2/` seulement si l'utilisateur demande explicitement une variante.
 
-Convention de nommage du sous-dossier : `output/YYYY-MM-DD-<slug-titre>/` où :
-- `YYYY-MM-DD` = date du jour (utilise la date courante en contexte, pas une date inventée)
-- `<slug-titre>` = le titre du script en kebab-case, sans accents, sans ponctuation (ex : "Le 3ᵉ truc" → `le-3eme-truc`, "POV ma routine post-partum" → `pov-ma-routine-post-partum`)
-
-Le fichier final : `output/YYYY-MM-DD-<slug-titre>/script.md`.
-
-Le contenu du fichier doit être identique au script livré dans le chat (en-tête tableau, sections horodatées, notes de production). Tu peux ajouter en haut du fichier une ligne `**Hook source**` rappelant le hook d'origine retenu à l'étape 1, utile pour retrouver l'intention créative.
-
-Une fois le fichier écrit, **mentionne brièvement à l'utilisateur le chemin d'enregistrement** dans ta réponse (ex : "Script enregistré dans `output/2026-05-07-le-3eme-truc/script.md`."). Pas besoin d'en faire un paragraphe : une ligne suffit.
-
-Si l'utilisateur ré-itère sur le script (modification du hook, changement de persona, ajustement du timing) après cet enregistrement, **réécris le même fichier** plutôt que d'en créer un nouveau, sauf si l'utilisateur demande explicitement de créer une variante (auquel cas un nouveau sous-dossier `output/YYYY-MM-DD-<slug-titre>-v2/` est approprié).
+Pour un export `.docx` ou `.pdf` à transmettre à une créatrice, propose les skills `docx` / `pdf` à partir du `script.md` déjà enregistré.
 
 ## Règles transverses
 
 ### Langue et ton
 
-Tout en français, avec un registre oral courant. Utilise "t'as", "j'pleurais", "j'l'ai", "ça gratte", "y a", "trucs". Évite les formulations trop écrites.
+Français, registre oral courant : "t'as", "j'pleurais", "j'l'ai", "ça gratte", "y a", "trucs". Évite les formulations écrites.
 
-Pour la précision linguistique :
-- "J'assume 1/3" plutôt que "J'assume un sur trois" (codes overlay TikTok)
-- Phrases courtes, idéalement une idée par phrase
-- Pas de "premièrement / deuxièmement / d'autre part" — utilise "d'abord", "et ensuite", "en gros", "et là"
+- Phrases courtes, une idée par phrase.
+- "J'assume 1/3" plutôt que "J'assume un sur trois" (codes overlay TikTok).
+- Pas de "premièrement / deuxièmement / d'autre part" — utilise "d'abord", "et ensuite", "en gros", "et là".
 
-### Codes plateforme
+#### Élisions orales (obligatoires dans la voix off uniquement)
 
-Pour TikTok, Reels et Shorts :
-- Format vertical 9:16 systématique
-- Hook impératif dans les 3 premières secondes
-- Texte à l'écran en complément de la voix (sound-off-friendly : 70% des vues TikTok se font sans le son)
-- Pas de logo en intro, seulement en CTA final
-- Pas de musique de pub, suggérer un son tendance natif si pertinent
+ElevenLabs lit ce que tu écris : si tu écris "écrit", la voix sonne lue. **Transcris les élisions que les francophones font naturellement à l'oral**, dans le champ `**Voix :**` uniquement (pas dans les textes à l'écran, pas dans les notes, pas dans les titres).
+
+| Écrit standard | À écrire dans la voix |
+|---|---|
+| `que c'était` | `qu'c'était` |
+| `que je` | `qu'j'` |
+| `que tu` | `qu't'` |
+| `que non` | `qu'non` |
+| `que ça` | `qu'ça` |
+| `je me` (devant consonne) | `j'me` |
+| `je te` | `j't'` |
+| `je le` | `j'le` |
+| `je la` | `j'la` |
+| `je suis` | `j'suis` |
+| `je sais` | `j'sais` |
+| `je pense` | `j'pense` |
+| `je m'asseyais` | `j'm'asseyais` |
+| `je m'en` | `j'm'en` |
+| `tu as` | `t'as` |
+| `tu es` | `t'es` |
+| `prévenu` | `prév'nu` |
+| `maintenant` | `maint'nant` |
+| `petit` | `p'tit` |
+| `parce que` | `parc'que` |
+| `il y a` | `y a` |
+| `il faut` | `faut` |
+| `pas de` (devant consonne) | `pas d'` |
+
+Garde-fous :
+- **Ne sur-élide pas.** Si la phrase devient cryptique (4 apostrophes d'affilée), recule. Le critère est l'oreille.
+- **Premier mot d'une phrase** : n'élide pas si ça sonne caricatural ("Personne" reste "Personne", pas "P'rsonne").
+- Les tags `[XXX]` sont neutres typographiquement.
+- Avant livraison, relis chaque `**Voix :**` à voix haute (mentalement). Si ça sonne écrit, élide ; si l'élision sonne forcée, retire-la.
+
+Exemple — avant / après :
+
+Standard (à ne pas écrire) :
+> `"Personne m'a prévenu qu'à 45 ans, le mot [HESITANT]'hémorroïdes' allait rentrer dans mon vocabulaire. Pendant 10 ans j'ai cru que c'était normal de serrer les dents quand je m'asseyais."`
+
+Oral naturel (à écrire) :
+> `"Personne m'a prév'nu qu'à 45 ans, le mot [HESITANT]'hémorroïdes' allait rentrer dans mon vocabulaire. Pendant 10 ans j'ai cru qu'c'était normal de serrer les dents quand j'm'asseyais."`
+
+### Codes plateforme (TikTok / Reels / Shorts)
+
+- Vertical 9:16 systématique.
+- Hook impératif dans les 3 premières secondes.
+- Texte à l'écran en complément de la voix (70% des vues TikTok sont sans son).
+- Pas de logo en intro, seulement en CTA final.
+- Pas de musique de pub ; suggérer un son tendance natif si pertinent.
 
 ### Contraintes légales (France, DGCCRF/EFSA)
 
-Pour un complément alimentaire :
-- Autorisé : "agit sur le transit", "soutient la circulation", "calme la sensation d'inconfort", "j'ai vu une vraie différence"
-- Interdit : "soigne", "guérit", "traite les hémorroïdes", "élimine", "supprime", "fait disparaître"
-- Tout claim chiffré ("80% du problème", "divisé par 3", "en quelques minutes") doit être validé par l'équipe légale, ou remplacé par une formulation expérientielle ("j'ai vu une vraie différence", "ça calme rapidement")
+**Complément alimentaire** :
+- Autorisé : "agit sur le transit", "soutient la circulation", "calme la sensation d'inconfort", "j'ai vu une vraie différence".
+- Interdit : "soigne", "guérit", "traite les hémorroïdes", "élimine", "supprime", "fait disparaître".
+- Tout claim chiffré ("80% du problème", "divisé par 3", "en quelques minutes") doit être validé légalement, ou remplacé par une formulation expérientielle.
 
-Pour la crème (cosmétique ou dispositif médical selon le statut) : rester sur "calme", "apaise", "soulage". Éviter "soigne", "guérit".
+**Crème** (cosmétique ou DM selon statut) : reste sur "calme", "apaise", "soulage". Évite "soigne", "guérit".
 
-### Anti-patterns à éviter
+### Anti-patterns
 
-- **Le ton "publicité"** : "Découvrez la nouvelle crème révolutionnaire…" → coupe immédiatement, c'est mort.
-- **Les claims médicaux non validés** : ne jamais inventer de chiffres ou citer une étude inexistante.
-- **Le surjeu** : la créatrice ne doit jamais "faire la vendeuse". Plus c'est posé, plus ça convertit.
-- **Les emoji et tirets cadratins (—)** : ni dans la voix, ni dans les textes à l'écran.
-- **Les mots IA-typiques** : "structurellement", "second-order", "navigate", "leverage", "déployer", "à savoir", "la lecture est simple". Reste en langage parlé.
-- **Le hook qui spoile la marque** : on dit "un produit", "ce truc", on révèle Butt Butter à 0:03+, jamais au tout premier plan.
-- **Le script trop long** : au-delà de 45 secondes, l'attention décroche. Si tu sens que tu débordes, coupe la section problème, pas la section produit. Et ne livre jamais une "version longue" alternative en plus du script court : une seule version, courte.
-- **Proposer plusieurs versions du script** : le skill livre **une seule version** (courte). Ne propose jamais une version courte ET une version longue en parallèle, ne demande jamais "tu veux laquelle ?" sur la longueur. Si l'utilisateur demande explicitement une version longue après coup, tu peux la produire en réponse à cette demande, mais jamais comme livraison par défaut.
-
-### Notes de production : ce qu'il faut toujours mettre
-
-À la fin de chaque script, inclure systématiquement :
-- Précision sur le rythme (lent → rapide → posé)
-- Liste explicite des claims à valider légalement
-- Mention "à valider avec l'équipe produit/légale avant tournage" pour tout chiffre
-- Suggestion de plan B si la persona ou la formule produit demandent une adaptation
-
-## Format de livraison
-
-Par défaut, livre le script en Markdown directement dans le chat, lisible tel quel, **et** enregistre-le systématiquement dans `output/YYYY-MM-DD-<slug-titre>/script.md` (voir la sous-section « Enregistrement obligatoire du script final » de l'étape 4 pour la convention complète). Mentionne le chemin d'enregistrement en une ligne à la fin de ta réponse.
-
-Si l'utilisateur demande un brief de tournage à transmettre à une créatrice, propose de l'exporter en .docx (avec le skill docx) ou en .pdf (avec le skill pdf) — l'export se fait à partir du fichier `script.md` déjà enregistré.
+- **Ton "publicité"** : "Découvrez la nouvelle crème révolutionnaire…" → coupe immédiat.
+- **Claims médicaux inventés** : jamais de chiffres ou d'études fictifs.
+- **Surjeu** : la créatrice ne "joue pas la vendeuse". Plus c'est posé, plus ça convertit.
+- **Emoji et tirets cadratins (—)** : ni dans la voix, ni à l'écran.
+- **Mots IA-typiques** : "structurellement", "second-order", "navigate", "leverage", "déployer", "à savoir", "la lecture est simple". Reste en parlé.
+- **Hook qui spoile la marque** : on dit "un produit", "ce truc". Butt Butter révélé à 0:03+, jamais frame 1.
+- **Deux versions livrées** : une seule, point. Si débordement >60 s, coupe la section problème, pas la section produit.

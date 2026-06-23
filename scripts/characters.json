@@ -2,13 +2,44 @@
   "default": "french-farmer-60",
   "characters": [
     {
-      "id": "french-farmer-60",
-      "name": "SD French farmer 60",
+      "id": "bernard-1",
+      "name": "Bernard",
       "gender": "male",
       "age": 60,
-      "description": "Friendly old",
+      "description": "Friendly old retired office worker",
       "elevenlabs_voice_id": "euWtyQoyFMlHLJAI4sYH",
       "seedance_asset_id": "asset-20260225022658-zn9dj",
+      "voice_tags": ""
+    },
+    {
+      "id": "sophie-1",
+      "name": "Sophie",
+      "gender": "female",
+      "age": 45,
+      "description": "45 years old Asian office worker",
+      "elevenlabs_voice_id": "CHHL7ULjQ01fbPTDf8eB",
+      "seedance_asset_id": "asset-20260225023840-zgbzr",
+      "voice_tags": ""
+
+    },
+    {
+      "id": "pierre-1",
+      "name": "Pierre",
+      "gender": "male",
+      "age": 67,
+      "description": "Friendly old retired officer engineer",
+      "elevenlabs_voice_id": "3DcI74ua12Ua2lJ8NUxK",
+      "seedance_asset_id": "asset-20260225022737-8sbrc",
+      "voice_tags": ""
+    },
+    {
+      "id": "david-1",
+      "name": "David",
+      "gender": "male",
+      "age": 45,
+      "description": "Friendly school teacher",
+      "elevenlabs_voice_id": "TTtB1x9U8PF0Vgf20IAP",
+      "seedance_asset_id": "asset-20260225022453-rj4l5",
       "voice_tags": ""
     }
   ]

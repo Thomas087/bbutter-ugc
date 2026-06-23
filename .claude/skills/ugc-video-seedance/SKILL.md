@@ -79,7 +79,35 @@ L'URL est passée telle quelle à `--image` — pas besoin d'upload, le packshot
 Crée `<session>/frames/segment_<N>/video_prompt.txt` avec un prompt qui contient :
 
 - **Description du personnage** dérivée de la persona du script : âge, look, tenue, environnement. Recopie tels quels les détails de l'en-tête du script (`pull en cachemire`, `cheveux gris poivre et sel`, `salle de bain classique`, etc.).
-- **Indication de plan caméra** : pour un plan ancre selfie, "iPhone front-camera selfie clip", "phone held selfie-style at arm's length", "front camera lens", "fixed framing".
+- **Indication de plan caméra** : pour un plan ancre selfie, "iPhone front-camera selfie clip — the viewer IS the iPhone's front camera, this is the raw front-camera feed", "vertical 9:16 frame", "fixed framing".
+- **POV front-camera (obligatoire, bloc complet, non négociable)** : pour tout plan ancre, le prompt doit contenir un bloc explicite qui interdit (a) que le téléphone soit visible dans le cadre, (b) que la scène soit composée comme un mirror-selfie. **Sans ce bloc, Seedance retombe par défaut sur un cadrage 3e personne ou mirror-selfie** (test empirique : segment 1 du 2026-05-12, dos de l'iPhone avec logo Apple et bumps caméra visibles parce que le prompt disait "holding the phone in selfie mode"). Bloc à recopier tel quel, à adapter uniquement pour le pronom du personnage :
+
+  ```
+  POV / framing: this is a true front-camera selfie clip — the viewer's
+  eye IS the iPhone's front-facing camera. The frame shows ONLY what
+  that front camera captures: the creator's face fills most of the
+  vertical frame, with the room visible behind.
+
+  CRITICAL — what is NOT in the frame:
+  - the phone itself: NO phone body, NO screen, NO Apple logo, NO rear
+    camera bumps, NO phone bezel, NO hand-holding-a-phone composition
+    anywhere in the image. The phone IS the camera, it cannot see itself.
+  - NO mirror, NO mirror reflection, NO reflective surface showing the
+    creator or the phone. This is NOT a mirror-selfie.
+  - NO third-person framing, NO over-the-shoulder shot, NO second camera
+    filming the creator.
+
+  {{gender pronoun}} arm holding the phone is OUT of frame at all times.
+  At most a small portion of {{his/her}} forearm or thumb may clip the
+  bottom edge — never the phone body.
+  ```
+
+- **Stage direction téléphone (une phrase courte, en complément du bloc POV)** : ajoute une phrase qui précise uniquement la **main + l'angle**, sans répéter "holding the phone" (cette formulation est piégée — voir bloc POV ci-dessus). Exemples valides :
+  - Plan ancre selfie main gauche : `Camera angle suggests the phone is held by the creator's left hand at arm's length, slight upward angle toward the face. Hand and phone body remain off-frame.`
+  - Plan ancre selfie main droite : `Camera angle suggests the phone is held by the creator's right hand at arm's length, slight downward angle. Hand and phone body remain off-frame.`
+  - Plan posé / à distance : `Phone is set on a stable surface about 1 meter away from the creator, at chest height. Not selfie mode. The shot is wider — head and shoulders visible.`
+  - Insert / macro produit : `This insert is shot with the iPhone's rear camera, held in one hand close to the product. Not a selfie shot. The creator's face is NOT in this frame.`
+  Choisis l'option qui colle à la stage direction du script. Une seule phrase, pas de paragraphe. Pour tout plan ancre selfie, **le bloc POV précédent reste la pièce maîtresse** ; cette phrase n'en est que le complément directionnel (main + angle).
 - **Direction tonale** : ton vulnérable / posé / cash, dérivé du contenu et des tags ElevenLabs (`[WHISPER]` → "almost whispered, confidential tone", `[SERIOUS]` → "calm, articulated"). 
 - **CRUCIAL — référence `[Audio 1]` pour la cadence labiale** :
   ```
@@ -98,7 +126,25 @@ Crée `<session>/frames/segment_<N>/video_prompt.txt` avec un prompt qui contien
   Sans cette phrase exacte, **Seedance hallucine** (test empirique sur segment 2 : "J'ai 60 ans" est devenu "Je suis homosexuel"). Le texte du prompt est l'ancre du contenu, l'audio est l'ancre de la cadence — les deux sont nécessaires.
 - **Mouvement labial et expression** : "mouth opens and closes softly with each syllable", "eyes locked on the lens", "micro head shifts of 1–3 degrees", "natural breathing between phrases", expressions cohérentes avec le ton ("conspiratorial half-smile", "subtle eyebrow lift").
 - **Stabilité** : "fixed framing — no camera movement, no zoom, no pan, no tilt, no rotation", "background completely still", "lighting stable across the whole clip with no flicker".
-- **Look UGC** : "iPhone front-camera look — soft, slightly compressed, mild barrel distortion, faint chromatic aberration, mild noise in shadows. Realistic, imperfect, honest UGC — not glossy, not cinematic."
+- **Look UGC — home-made, mal éclairé, NOT cinematic (bloc obligatoire)** : sans ce bloc, Seedance retombe par défaut sur un rendu trop propre — ring-light, peau lissée, bokeh cinéma — qui tue la crédibilité UGC. Bloc à recopier (adapter le décor) :
+
+  ```
+  Look: raw amateur iPhone front-camera footage in an ordinary room.
+  Home-made, casual, NOT cinematic, NOT professional, NOT a beauty shot.
+
+  Lighting: single uneven source (one ceiling bulb or one window).
+  Slightly off white balance, faint green-yellow tungsten/fluorescent
+  cast. Visible top-light shadow under the eyes, nose or chin. Face
+  brighter than the background, which sits slightly underexposed.
+
+  Sensor: soft focus, compressed dynamic range, noise in shadows,
+  barrel distortion at the edges, faint chromatic aberration, imperfect
+  auto-white-balance, low-bitrate mushy skin texture.
+
+  NOT: no ring-light catchlight, no softbox, no fill or rim light, no
+  color grading, no cinematic LUT, no shallow depth of field, no creamy
+  bokeh, no beauty-camera skin smoothing, no studio backdrop.
+  ```
 - **Anti-watermark** : "Absolutely no on-screen text, captions, subtitles, or watermarks visible in the image."
 
 Modèle de référence : `output/2026-05-08-le-3eme/frames/segment_2/video_prompt_hybrid_test.txt`.
@@ -152,6 +198,8 @@ Pas de commentaire sur le déroulé technique (génération réussie, fichiers �
 - **Mélanger anglais et français dans la voix off du prompt** : les phrases parlées doivent rester en français pur, sans paraphrase anglaise — sinon Seedance peut prononcer un mot anglais à la place.
 - **Oublier le packshot quand le segment montre le produit** : sans `--image`, le tube de crème dans la main du personnage sera générique. Avec le packshot, Seedance reproduit raisonnablement le design réel.
 - **Défaut sur un mauvais personnage** : si le genre/âge ne match pas, ne génère pas avec un personnage approximatif. Stoppe et fais ajouter le bon character asset.
+- **Téléphone visible dans le cadre / mirror-selfie** : tout prompt selfie doit contenir le bloc "POV front-camera" complet (téléphone OUT of frame + interdiction explicite mirror-selfie / 3e personne / dos d'iPhone visible). Toute formulation type `UGC creator is holding the phone in selfie mode` est piégée — Seedance l'interprète comme un cadrage 3e personne ou mirror-selfie (logo Apple + bumps caméra visibles au dos du téléphone). Précédent connu : segment 1 du `output/2026-05-12-le-mot-interdit/`. Toujours vérifier la frame 0 du rendu : si on voit le dos d'un iPhone, regénérer avec le bloc POV au-dessus.
+- **Rendu trop léché / "beauty-camera"** : sans bloc "Look UGC" explicite, Seedance produit un rendu de pub cosmétique. Symptômes frame 0 : catchlight circulaire dans l'œil (= ring-light), peau sans grain, bokeh cinéma, balance des blancs parfaite. Correctif : insérer le bloc "Look UGC" complet et ré-générer.
 
 ## Erreurs possibles
 
@@ -163,3 +211,4 @@ Pas de commentaire sur le déroulé technique (génération réussie, fichiers �
 - **Lipsync clairement décalée** : raffiner les `(small pause)` dans le prompt, ou découper le segment en deux. Si le segment est très court (< 2 s d'audio), la lipsync peut être imprécise par construction du modèle.
 - **Texte halluciné** (le personnage dit autre chose que la phrase prévue) : la phrase française exacte n'est pas dans le prompt, ou est paraphrasée en anglais. La remettre telle quelle entre guillemets droits.
 - **Personnage qui ne ressemble pas à l'asset enregistré** : vérifier que le `seedance_asset_id` est valide (testable dans la BytePlus Ark Console) et que la référence visuelle utilisée pour créer l'asset était suffisamment précise.
+- **Dos d'iPhone visible (logo Apple, bumps caméra) dans le rendu** : le prompt ne contient pas le bloc "POV front-camera / phone OUT of frame / no mirror-selfie" explicite. Insérer le bloc complet documenté dans la section "POV front-camera (obligatoire)" ci-dessus, supprimer toute formulation "creator is holding the phone" qui suggère un cadrage 3e personne, puis ré-générer avec `--force`.

@@ -47,6 +47,7 @@ Usage:
         [--image path/to/product.png] [--image https://...] \\
         [--audio path/to/voice.mp3]  [--audio https://...] \\
         [--prompt TEXT] [--duration 4..15] [--ratio adaptive|16:9|9:16|1:1] \\
+        [--resolution 480p|720p] \\
         [--model dreamina-seedance-2-0-260128] [--no-generate-audio] [--no-watermark] \\
         [--output-name segment_1_final.mp4]
 
@@ -230,6 +231,12 @@ def main() -> int:
         default="9:16",
         help='Output aspect ratio. "adaptive" lets the model pick from references.',
     )
+    ap.add_argument(
+        "--resolution",
+        default="720p",
+        help="Output video resolution. Defaults to 720p. "
+        "Supported tiers for dreamina-seedance-2-0-*: 480p, 720p.",
+    )
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument(
         "--no-generate-audio",
@@ -319,13 +326,14 @@ def main() -> int:
         "content": content,
         "generate_audio": not args.no_generate_audio,
         "ratio": args.ratio,
+        "resolution": args.resolution,
         "duration": duration,
         "watermark": not args.no_watermark,
     }
 
     print(
         f"[segment {n}] model={args.model} audio={audio_sec:.2f}s "
-        f"duration={duration}s ratio={args.ratio} "
+        f"duration={duration}s ratio={args.ratio} resolution={args.resolution} "
         f"refs={len(args.character_asset_id)} character-assets + "
         f"{len(image_urls)} image-urls + {len(audio_urls)} audio-urls",
         file=sys.stderr,
